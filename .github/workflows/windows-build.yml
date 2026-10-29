@@ -1,0 +1,70 @@
+name: Windows build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - windows-build
+    paths:
+      - ".github/workflows/windows-build.yml"
+      - "packaging/windows_launcher.py"
+      - "src/**"
+      - "tests/**"
+      - "Makefile"
+      - "README.md"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build PortScanner.exe
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          architecture: x64
+
+      - name: Install build dependency
+        run: python -m pip install --upgrade pip pyinstaller==6.22.3
+
+      - name: Run test suite
+        env:
+          PYTHONPATH: src
+        run: python -m unittest discover -s tests -v
+
+      - name: Build executable
+        run: >
+          python -m PyInstaller
+          --noconfirm
+          --clean
+          --onefile
+          --windowed
+          --name PortScanner
+          --paths src
+          --specpath build
+          packaging/windows_launcher.py
+
+      - name: Verify and checksum executable
+        shell: pwsh
+        run: |
+          if (-not (Test-Path dist/PortScanner.exe)) {
+            throw "PyInstaller did not produce dist/PortScanner.exe"
+          }
+          Get-Item dist/PortScanner.exe | Format-List Name, Length
+          Get-FileHash dist/PortScanner.exe -Algorithm SHA256
+
+      - name: Upload executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: PortScanner-windows-x64
+          path: dist/PortScanner.exe
+          if-no-files-found: error
+          retention-days: 14

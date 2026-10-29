@@ -67,6 +67,17 @@ make test
 
 The tests use only the Python standard library and do not require a display.
 
+## Windows 11
+
+A ready-to-run 64-bit `PortScanner.exe` is included in the repository. It is a
+self-contained build, so Python and Tkinter do not need to be installed. The
+executable is produced by the
+[Windows build](.github/workflows/windows-build.yml) GitHub Actions workflow
+using PyInstaller.
+
+The executable is unsigned, so Windows SmartScreen may ask for confirmation the
+first time it is started.
+
 ## How to use
 
 1. **Targets** — enter an IP address, network, range or hostname. Separate
@@ -119,6 +130,9 @@ src/portscanner/
   engine.py    asyncio TCP/UDP scan engine
   ports.py     port parsing and presets
   targets.py   target expansion (IP, CIDR, ranges, DNS)
+packaging/
+  windows_launcher.py  PyInstaller entry point for PortScanner.exe
 tests/         unit and integration tests
+.github/       Windows 11 build workflow
 Makefile       build, test, install
 ```

@@ -4,6 +4,7 @@ import queue
 import socket
 import threading
 import unittest
+from unittest import mock
 
 from portscanner.engine import (
     PortResult,
@@ -11,6 +12,7 @@ from portscanner.engine import (
     ScanEngine,
     ScanFinished,
     ScanProgress,
+    _rst_linger_option,
     validate_config,
 )
 
@@ -82,6 +84,14 @@ class ScanConfigValidationTests(unittest.TestCase):
                 ScanConfig(hosts=["127.0.0.1"], ports=[0]),
                 lambda _event: None,
             )
+
+
+class PlatformOptionTests(unittest.TestCase):
+    def test_linger_payload_layout(self) -> None:
+        with mock.patch("portscanner.engine.sys.platform", "win32"):
+            self.assertEqual(len(_rst_linger_option()), 4)
+        with mock.patch("portscanner.engine.sys.platform", "linux"):
+            self.assertEqual(len(_rst_linger_option()), 8)
 
 
 class EngineTests(unittest.TestCase):

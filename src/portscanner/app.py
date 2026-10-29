@@ -39,7 +39,16 @@ BORDER = "#2a3040"
 
 
 def _config_directory() -> Path:
-    """Return the per-user config directory, honouring XDG_CONFIG_HOME."""
+    """Return the per-user config directory for the current platform."""
+    if sys.platform == "win32":
+        appdata = os.environ.get("APPDATA", "").strip()
+        base = (
+            Path(appdata).expanduser()
+            if appdata
+            else Path.home() / "AppData" / "Roaming"
+        )
+        return base / "portscanner"
+
     override = os.environ.get("XDG_CONFIG_HOME", "").strip()
     if override:
         base = Path(override).expanduser()

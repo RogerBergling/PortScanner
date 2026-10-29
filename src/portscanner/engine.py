@@ -12,6 +12,7 @@ import errno
 import math
 import socket
 import struct
+import sys
 import threading
 import time
 from dataclasses import dataclass
@@ -159,6 +160,12 @@ def _service_name(port: int, protocol: str) -> str:
 
 def _family_for(host: str) -> socket.AddressFamily:
     return socket.AF_INET6 if ":" in host else socket.AF_INET
+
+
+def _rst_linger_option() -> bytes:
+    """Return a SO_LINGER value that sends RST instead of FIN on close."""
+    # Windows' struct linger uses two unsigned shorts; POSIX uses two ints.
+    return struct.pack("hh" if sys.platform == "win32" else "ii", 1, 0)
 
 
 class ScanEngine:
@@ -368,7 +375,7 @@ class ScanEngine:
             # Send RST instead of FIN, otherwise full port scans leave tens of
             # thousands of sockets in TIME_WAIT.
             sock.setsockopt(
-                socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0)
+                socket.SOL_SOCKET, socket.SO_LINGER, _rst_linger_option()
             )
             async with asyncio.timeout(self.config.timeout):
                 await loop.sock_connect(sock, (host, port))
