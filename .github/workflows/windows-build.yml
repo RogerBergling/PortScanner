@@ -24,16 +24,19 @@ jobs:
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           architecture: x64
 
       - name: Install build dependency
         run: python -m pip install --upgrade pip pyinstaller==6.22.3
+
+      - name: Verify Tkinter
+        run: python -c "import tkinter; print('Tkinter', tkinter.TkVersion)"
 
       - name: Run test suite
         env:
@@ -61,8 +64,17 @@ jobs:
           Get-Item dist/PortScanner.exe | Format-List Name, Length
           Get-FileHash dist/PortScanner.exe -Algorithm SHA256
 
+      - name: Smoke test executable
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath dist/PortScanner.exe `
+            -ArgumentList "--version" -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            throw "PortScanner.exe --version exited with $($process.ExitCode)"
+          }
+
       - name: Upload executable
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: PortScanner-windows-x64
           path: dist/PortScanner.exe
