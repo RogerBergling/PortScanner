@@ -37,9 +37,18 @@ AMBER = "#fbbf24"
 RED = "#f87171"
 BORDER = "#2a3040"
 
-CONFIG_DIR = Path(
-    os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")
-) / "portscanner"
+
+def _config_directory() -> Path:
+    """Return the per-user config directory, honouring XDG_CONFIG_HOME."""
+    override = os.environ.get("XDG_CONFIG_HOME", "").strip()
+    if override:
+        base = Path(override).expanduser()
+        if base.is_absolute():
+            return base / "portscanner"
+    return Path.home() / ".config" / "portscanner"
+
+
+CONFIG_DIR = _config_directory()
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
 PROTOCOL_CHOICES = ("TCP", "UDP", "TCP + UDP")
@@ -71,6 +80,7 @@ class PortScannerApp:
         self._sort_column: str | None = None
         self._sort_reverse = False
         self._searching = False
+        self._stopping = False
 
         self._build_styles()
         self._build_ui()
@@ -544,12 +554,15 @@ class PortScannerApp:
         elif probes > 2_000_000:
             text = f"{hosts:,} hosts × {port_count:,} ports × {protocol_count} = {probes:,} probes (large scan)"
             color = AMBER
-        elif probes:
-            text = f"{hosts:,} hosts × {port_count:,} ports × {protocol_count} = {probes:,} probes"
-            color = "#6f7a8d"
-        else:
+        elif hosts == 0:
+            text = "Check the target specification"
+            color = RED
+        elif port_count == 0:
             text = "Check the port specification"
             color = RED
+        else:
+            text = f"{hosts:,} hosts × {port_count:,} ports × {protocol_count} = {probes:,} probes"
+            color = "#6f7a8d"
         self.estimate_label.configure(text=text, foreground=color)
 
     def _start_scan(self) -> None:
@@ -558,6 +571,7 @@ class PortScannerApp:
         if self._searching:
             return
 
+        self._stopping = False
         self._searching = True
         self.root.configure(cursor="watch")
         self.root.update_idletasks()
@@ -648,6 +662,7 @@ class PortScannerApp:
     def _stop_scan(self) -> None:
         if self.engine is None:
             return
+        self._stopping = True
         self.engine.stop()
         self.stop_button.configure(state="disabled")
         self.status_var.set("Stopping scan…")
@@ -681,7 +696,7 @@ class PortScannerApp:
         percent = (event.scanned / event.total * 100.0) if event.total else 0.0
         self.progress["value"] = percent
         self.percent_var.set(f"{percent:.0f}%")
-        if event.current:
+        if event.current and not self._stopping:
             self.status_var.set(f"Scanning {event.current}…")
         self.stats_var.set(
             f"{event.scanned:,} / {event.total:,} probes · "
@@ -689,6 +704,7 @@ class PortScannerApp:
         )
 
     def _finish_scan(self, event: ScanFinished) -> None:
+        self._stopping = False
         engine = self.engine
         if engine is not None:
             engine.join(timeout=1.0)
@@ -940,6 +956,11 @@ class PortScannerApp:
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
 
+    unknown = [arg for arg in args if arg not in ("-h", "--help", "--version")]
+    if unknown:
+        print(f"portscanner: unrecognized argument: {unknown[0]}", file=sys.stderr)
+        print("Try 'portscanner --help' for usage.", file=sys.stderr)
+        return 2
     if "--version" in args:
         print(f"portscanner {__version__}")
         return 0
@@ -984,5 +1005,10 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-if __name__ == "__main__":  # pragma: no cover
+def cli() -> None:
+    """Zipapp entry point that preserves main()'s exit status."""
     raise SystemExit(main())
+
+
+if __name__ == "__main__":  # pragma: no cover
+    cli()

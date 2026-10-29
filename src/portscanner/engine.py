@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import errno
+import math
 import socket
 import struct
 import threading
@@ -16,6 +17,8 @@ import time
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Callable
+
+VALID_PROTOCOLS = frozenset({"tcp", "udp"})
 
 UDP_PROBES: dict[int, bytes] = {
     # DNS: query for version.bind (CHAOS TXT), which many resolvers answer.
@@ -97,6 +100,55 @@ class ScanFinished:
     error: str | None = None
 
 
+def validate_config(config: ScanConfig) -> None:
+    """Reject scan settings that would otherwise fail silently or strangely."""
+    if not config.hosts:
+        raise ValueError("A scan needs at least one host.")
+    if any(
+        not isinstance(host, str) or not host.strip() for host in config.hosts
+    ):
+        raise ValueError("Scan hosts must be non-empty strings.")
+
+    if not config.ports:
+        raise ValueError("A scan needs at least one port.")
+    for port in config.ports:
+        if (
+            not isinstance(port, int)
+            or isinstance(port, bool)
+            or not 1 <= port <= 65535
+        ):
+            raise ValueError(
+                f"Invalid port {port!r}: ports must be integers between 1 and 65535."
+            )
+
+    if not config.protocols:
+        raise ValueError("A scan needs at least one protocol.")
+    unsupported = [p for p in config.protocols if p not in VALID_PROTOCOLS]
+    if unsupported:
+        raise ValueError(
+            "Unsupported protocol(s): "
+            + ", ".join(str(p) for p in unsupported)
+            + ". Use 'tcp' and/or 'udp'."
+        )
+    if len(set(config.protocols)) != len(config.protocols):
+        raise ValueError("Protocols must not be repeated.")
+
+    if isinstance(config.timeout, bool) or not isinstance(
+        config.timeout, (int, float)
+    ):
+        raise ValueError("Timeout must be a positive number of seconds.")
+    timeout = float(config.timeout)
+    if not math.isfinite(timeout) or timeout <= 0:
+        raise ValueError("Timeout must be a positive number of seconds.")
+
+    try:
+        concurrency = int(config.concurrency)
+    except (TypeError, ValueError, OverflowError):
+        raise ValueError("Concurrency must be a positive integer.") from None
+    if concurrency < 1:
+        raise ValueError("Concurrency must be a positive integer.")
+
+
 @lru_cache(maxsize=4096)
 def _service_name(port: int, protocol: str) -> str:
     try:
@@ -113,17 +165,14 @@ class ScanEngine:
     """Run one scan. Create, :meth:`start`, then observe events via callback."""
 
     def __init__(self, config: ScanConfig, on_event: Callable[[object], None]) -> None:
-        if not config.hosts:
-            raise ValueError("A scan needs at least one host.")
-        if not config.ports:
-            raise ValueError("A scan needs at least one port.")
+        validate_config(config)
         self.config = config
         self._emit = on_event
         self._total = len(config.hosts) * len(config.ports) * len(config.protocols)
         self._scanned = 0
         self._open = 0
         self._current = ""
-        self._started_at = time.monotonic()
+        self._started_at = 0.0
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
@@ -140,6 +189,7 @@ class ScanEngine:
     def start(self) -> None:
         if self._thread is not None:
             raise RuntimeError("ScanEngine can only be started once.")
+        self._started_at = time.monotonic()
         self._thread = threading.Thread(
             target=self._run, name="portscanner-engine", daemon=True
         )

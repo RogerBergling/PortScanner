@@ -11,7 +11,7 @@ build: $(BINARY)
 
 $(BINARY): $(SOURCES)
 	find src -name __pycache__ -type d -prune -exec rm -rf {} +
-	$(PYTHON) -m zipapp src -m "portscanner.app:main" -p "/usr/bin/env python3" -o $(BINARY)
+	$(PYTHON) -m zipapp src -m "portscanner.app:cli" -p "/usr/bin/env python3" -o $(BINARY)
 	chmod 755 $(BINARY)
 
 run:

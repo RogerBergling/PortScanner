@@ -39,6 +39,15 @@ class ExpandTargetsTests(unittest.TestCase):
         with self.assertRaises(TargetError):
             expand_targets("192.0.2.9-192.0.2.2")
 
+    def test_invalid_range_end_is_rejected(self) -> None:
+        for spec in (
+            "192.0.2.5-300",
+            "192.0.2.5-192.0.2.300",
+            "2001:db8::1-2001:db8::ffff:ffff:ffff:ffff:ffff",
+        ):
+            with self.subTest(spec=spec), self.assertRaises(TargetError):
+                expand_targets(spec, resolve=False)
+
     def test_empty_spec_is_rejected(self) -> None:
         with self.assertRaises(TargetError):
             expand_targets("   ")
@@ -59,8 +68,10 @@ class ExpandTargetsTests(unittest.TestCase):
         self.assertEqual(estimate_targets("192.0.2.0/30"), 2)
         self.assertEqual(estimate_targets("192.0.2.1"), 1)
         self.assertEqual(estimate_targets("192.0.2.1-192.0.2.10"), 10)
+        self.assertEqual(estimate_targets("2001:db8::1-2001:db8::5"), 5)
         self.assertEqual(estimate_targets("example.com"), 1)
-        self.assertEqual(estimate_targets("192.0.2.9-192.0.2.2"), 1)
+        self.assertEqual(estimate_targets("192.0.2.9-192.0.2.2"), 0)
+        self.assertEqual(estimate_targets("192.0.2.5-300"), 0)
         self.assertEqual(estimate_targets("not/a/network"), 0)
 
 

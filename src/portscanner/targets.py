@@ -10,6 +10,7 @@ MAX_HOSTS = 65536
 
 _TOKEN_SPLIT = re.compile(r"[,\s]+")
 _RANGE_RE = re.compile(r"^([0-9A-Fa-f:.]+)-([0-9A-Fa-f:.]+|\d+)$")
+_IPV4_LITERAL_RE = re.compile(r"^\d+(?:\.\d+){3}$")
 
 
 class TargetError(ValueError):
@@ -34,12 +35,19 @@ def _range_from_token(
         end = ipaddress.ip_address(right)
     except ValueError:
         # Short IPv4 form: 192.168.0.10-20
-        if start.version != 4 or not right.isdigit():
-            return None
-        prefix = str(start).rsplit(".", 1)[0]
-        try:
-            end = ipaddress.ip_address(f"{prefix}.{right}")
-        except ValueError:
+        if start.version == 4 and right.isdigit():
+            prefix = str(start).rsplit(".", 1)[0]
+            try:
+                end = ipaddress.ip_address(f"{prefix}.{right}")
+            except ValueError:
+                raise TargetError(
+                    f"Range '{token}' has an invalid IPv4 end address."
+                ) from None
+        elif start.version == 4 and _IPV4_LITERAL_RE.fullmatch(right):
+            raise TargetError(f"Range '{token}' has an invalid IPv4 end address.")
+        elif start.version == 6 and ":" in right:
+            raise TargetError(f"Range '{token}' has an invalid IPv6 end address.")
+        else:
             return None
 
     if start.version != end.version:
@@ -72,7 +80,8 @@ def estimate_targets(spec: str) -> int:
         try:
             parsed_range = _range_from_token(token)
         except TargetError:
-            parsed_range = None
+            # Invalid ranges are ignored, matching expand_targets()' rejection.
+            continue
         if parsed_range is not None:
             start, end = parsed_range
             count += int(end) - int(start) + 1

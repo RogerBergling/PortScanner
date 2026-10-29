@@ -11,6 +11,7 @@ from portscanner.engine import (
     ScanEngine,
     ScanFinished,
     ScanProgress,
+    validate_config,
 )
 
 
@@ -34,6 +35,53 @@ def free_tcp_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))
         return sock.getsockname()[1]
+
+
+class ScanConfigValidationTests(unittest.TestCase):
+    def test_valid_config_is_accepted(self) -> None:
+        validate_config(
+            ScanConfig(
+                hosts=["127.0.0.1"],
+                ports=[22, 80],
+                protocols=("tcp", "udp"),
+                timeout=0.5,
+                concurrency=10,
+            )
+        )
+
+    def test_invalid_configs_are_rejected(self) -> None:
+        invalid: list[dict[str, object]] = [
+            {"hosts": []},
+            {"hosts": [""]},
+            {"hosts": ["   "]},
+            {"ports": []},
+            {"ports": [0]},
+            {"ports": [65536]},
+            {"ports": [True]},
+            {"protocols": ()},
+            {"protocols": ("icmp",)},
+            {"protocols": ("tcp", "tcp")},
+            {"timeout": 0},
+            {"timeout": -1},
+            {"timeout": float("nan")},
+            {"timeout": float("inf")},
+            {"timeout": "1.0"},
+            {"concurrency": 0},
+            {"concurrency": "many"},
+            {"concurrency": float("inf")},
+        ]
+        for overrides in invalid:
+            values: dict[str, object] = {"hosts": ["127.0.0.1"], "ports": [80]}
+            values.update(overrides)
+            with self.subTest(overrides=overrides), self.assertRaises(ValueError):
+                validate_config(ScanConfig(**values))  # type: ignore[arg-type]
+
+    def test_engine_uses_the_same_validation(self) -> None:
+        with self.assertRaises(ValueError):
+            ScanEngine(
+                ScanConfig(hosts=["127.0.0.1"], ports=[0]),
+                lambda _event: None,
+            )
 
 
 class EngineTests(unittest.TestCase):

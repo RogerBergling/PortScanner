@@ -17,7 +17,8 @@ protocol, and watch results appear live.
   "well-known" and all 65,535 ports
 - High concurrency (up to 5,000 probes in flight) with configurable timeout
 - Live progress, scan rate, open-port counter and result table
-- Sortable results, copy addresses with `Ctrl+C`, export to CSV
+- Sortable results, copy selected `host:port/protocol` entries with `Ctrl+C`,
+  export to CSV
 - Settings are remembered between runs
 - Single-file executable named `portscanner`
 
@@ -25,6 +26,7 @@ protocol, and watch results appear live.
 
 - Linux with a graphical session (X11 or Wayland; Tkinter is used)
 - Python **3.11+** with Tkinter
+- No third-party Python packages are required
 
 Install the Tkinter bindings if they are missing:
 
@@ -62,6 +64,8 @@ Run the test suite:
 ```bash
 make test
 ```
+
+The tests use only the Python standard library and do not require a display.
 
 ## How to use
 
@@ -102,6 +106,8 @@ For quick results, start with the **Common ports** preset.
 - The scanner performs TCP connect scans and connected UDP probes. It does not
   require root and does not send raw packets or SYN scans.
 - Scans are limited to 65,536 targets per run to keep the interface usable.
+- Settings are stored in `$XDG_CONFIG_HOME/portscanner/config.json`
+  (default: `~/.config/portscanner/config.json`).
 - Only scan systems you own or are explicitly authorized to test. Unauthorized
   port scanning may be illegal in your jurisdiction.
 
