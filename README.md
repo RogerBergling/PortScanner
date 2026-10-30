@@ -1,12 +1,12 @@
 # PortScanner
 
-Fast TCP/UDP port scanner for Linux with a graphical interface.
+Fast TCP/UDP port scanner for Linux and Windows 11 with a graphical interface.
 
 PortScanner uses asynchronous connect scans, so it needs **no root privileges**
 and starts scanning immediately. Enter one or more targets, choose ports and a
 protocol, and watch results appear live.
 
-![status](https://img.shields.io/badge/platform-Linux-blue)
+![status](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%2011-blue)
 
 ## Features
 
@@ -20,13 +20,16 @@ protocol, and watch results appear live.
 - Sortable results, copy selected `host:port/protocol` entries with `Ctrl+C`,
   export to CSV
 - Settings are remembered between runs
-- Single-file executable named `portscanner`
+- Single-file Linux executable named `portscanner`
+- Self-contained Windows 11 executable named `PortScanner.exe`
 
 ## Requirements
 
-- Linux with a graphical session (X11 or Wayland; Tkinter is used)
-- Python **3.11+** with Tkinter
-- No third-party Python packages are required
+- **Linux:** Python **3.11+** with Tkinter and a graphical session
+  (X11 or Wayland)
+- **Windows 11:** no Python installation is required for the prebuilt
+  `PortScanner.exe`
+- No third-party Python packages are required at runtime
 
 Install the Tkinter bindings if they are missing:
 
@@ -67,16 +70,47 @@ make test
 
 The tests use only the Python standard library and do not require a display.
 
+### Build the Windows executable
+
+The checked-in `PortScanner.exe` is a self-contained 64-bit build produced with
+Python **3.14.10** and the pinned build dependencies in
+`requirements-build.txt`. To rebuild it on Windows:
+
+```powershell
+py -3.14 -m pip install -r requirements-build.txt
+py -3.14 -m PyInstaller --noconfirm --clean --onefile --windowed `
+  --name PortScanner --paths src --specpath build packaging/windows_launcher.py
+```
+
+The GitHub Actions
+[Windows build](.github/workflows/windows-build.yml) runs the test suite,
+audits the build dependencies with `pip-audit`, and produces the same
+executable on `windows-latest`.
+
 ## Windows 11
 
 A ready-to-run 64-bit `PortScanner.exe` is included in the repository. It is a
-self-contained build, so Python and Tkinter do not need to be installed. The
-executable is produced by the
-[Windows build](.github/workflows/windows-build.yml) GitHub Actions workflow
-using PyInstaller.
+self-contained build, so Python and Tkinter do not need to be installed.
 
 The executable is unsigned, so Windows SmartScreen may ask for confirmation the
-first time it is started.
+first time it is started. Verify the download against `SHA256SUMS`:
+
+```powershell
+Get-FileHash .\PortScanner.exe -Algorithm SHA256
+```
+
+## Security and dependency updates
+
+- The application has **no third-party runtime dependencies**; it uses only the
+  Python standard library and Tkinter.
+- The Windows executable bundles a current, patched Python runtime. The exact
+  version is printed by the build workflow for every release.
+- Build-only dependencies are pinned in `requirements-build.txt`, and CI runs
+  `pip-audit` against the build and audit tooling on every Windows build.
+- Dependabot checks GitHub Actions and Python build dependencies weekly.
+- GitHub Actions are pinned to immutable commit SHAs.
+- On Linux, Python and Tkinter come from the operating system; keep them
+  updated through your distribution's security updates.
 
 ## How to use
 
@@ -93,7 +127,7 @@ first time it is started.
 5. Open ports are listed while the scan runs. Use **Save CSV…** afterwards.
 
 Keyboard shortcuts: `Enter` starts a scan, `Esc` stops it, `Ctrl+C` copies the
-selected addresses.
+selected `host:port/protocol` entries.
 
 ### UDP scans
 
@@ -118,7 +152,8 @@ For quick results, start with the **Common ports** preset.
   require root and does not send raw packets or SYN scans.
 - Scans are limited to 65,536 targets per run to keep the interface usable.
 - Settings are stored in `$XDG_CONFIG_HOME/portscanner/config.json`
-  (default: `~/.config/portscanner/config.json`).
+  (default: `~/.config/portscanner/config.json`) on Linux and in
+  `%APPDATA%\portscanner\config.json` on Windows.
 - Only scan systems you own or are explicitly authorized to test. Unauthorized
   port scanning may be illegal in your jurisdiction.
 
@@ -133,6 +168,9 @@ src/portscanner/
 packaging/
   windows_launcher.py  PyInstaller entry point for PortScanner.exe
 tests/         unit and integration tests
-.github/       Windows 11 build workflow
+.github/       Dependabot and Windows 11 build workflow
+requirements-build.txt  pinned PyInstaller build dependency
+requirements-dev.txt    pinned pip-audit tooling
+SHA256SUMS     checksums for the committed executables
 Makefile       build, test, install
 ```

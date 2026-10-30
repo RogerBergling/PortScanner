@@ -8,35 +8,54 @@ on:
       - windows-build
     paths:
       - ".github/workflows/windows-build.yml"
-      - "packaging/windows_launcher.py"
+      - "packaging/**"
+      - "requirements-build.txt"
+      - "requirements-dev.txt"
       - "src/**"
       - "tests/**"
       - "Makefile"
-      - "README.md"
 
 permissions:
   contents: read
+
+concurrency:
+  group: windows-build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     name: Build PortScanner.exe
     runs-on: windows-latest
+    timeout-minutes: 20
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: "3.12"
+          python-version: "3.14.10"
           architecture: x64
 
-      - name: Install build dependency
-        run: python -m pip install --upgrade pip pyinstaller==6.22.3
+      - name: Show toolchain
+        run: |
+          python -VV
+          python -m pip --version
 
-      - name: Verify Tkinter
-        run: python -c "import tkinter; print('Tkinter', tkinter.TkVersion)"
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-build.txt -r requirements-dev.txt
+
+      - name: Audit dependencies
+        run: python -m pip_audit -r requirements-build.txt -r requirements-dev.txt --strict
+
+      - name: Show Python and Tk versions
+        run: >
+          python -c "import sys, tkinter; print(sys.version);
+          print('Tk', tkinter.TkVersion);
+          print('Tcl', tkinter.Tcl().eval('info patchlevel'))"
 
       - name: Run test suite
         env:
@@ -62,7 +81,9 @@ jobs:
             throw "PyInstaller did not produce dist/PortScanner.exe"
           }
           Get-Item dist/PortScanner.exe | Format-List Name, Length
-          Get-FileHash dist/PortScanner.exe -Algorithm SHA256
+          $hash = (Get-FileHash dist/PortScanner.exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  PortScanner.exe" | Set-Content dist/SHA256SUMS
+          Get-Content dist/SHA256SUMS
 
       - name: Smoke test executable
         shell: pwsh
@@ -74,9 +95,11 @@ jobs:
           }
 
       - name: Upload executable
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: PortScanner-windows-x64
-          path: dist/PortScanner.exe
+          path: |
+            dist/PortScanner.exe
+            dist/SHA256SUMS
           if-no-files-found: error
           retention-days: 14

@@ -1,0 +1,2 @@
+# CI-only tooling used to audit the pinned build dependencies.
+pip-audit==2.10.1
