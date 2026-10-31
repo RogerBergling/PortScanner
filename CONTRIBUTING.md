@@ -80,3 +80,9 @@ updates without a clear reason.
 
 Do not report vulnerabilities in public issues. Follow
 [SECURITY.md](SECURITY.md).
+
+## License
+
+PortScanner is released under the [MIT license](LICENSE). By contributing, you
+agree that your contributions are provided under the same license. Ensure that
+you have the right to submit any code, assets, or documentation you add.

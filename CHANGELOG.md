@@ -8,6 +8,7 @@ semantic versioning.
 
 ### Added
 
+- MIT license.
 - Validated, versioned application configuration with atomic writes.
 - Security policy, contribution guide, architecture and enterprise deployment
   documentation.

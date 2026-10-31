@@ -161,6 +161,7 @@ error, `130` interrupted. Run `portscanner scan --help` for the full reference.
 
 ## Governance and assurance
 
+- [MIT license](LICENSE)
 - [Security policy and vulnerability reporting](SECURITY.md)
 - [Contributing guide](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
@@ -168,8 +169,8 @@ error, `130` interrupted. Run `portscanner scan --help` for the full reference.
 - [Enterprise deployment and assurance](docs/ENTERPRISE.md)
 - [Third-party notices](THIRD-PARTY-NOTICES.md)
 
-Project licensing has not yet been declared. This is a release blocker for
-redistribution; see the enterprise guide before commercial deployment.
+PortScanner is released under the MIT license. See [LICENSE](LICENSE) and
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) before redistribution.
 
 ## How to use
 
@@ -231,6 +232,7 @@ packaging/
   windows_cli_launcher.py  PyInstaller entry point for PortScannerCLI.exe
 docs/          architecture and enterprise guidance
 tests/         unit and integration tests
+LICENSE        MIT license
 .github/       CI, CodeQL, Dependabot, and Windows build workflows
 SECURITY.md        vulnerability disclosure and support policy
 CONTRIBUTING.md    development and release workflow

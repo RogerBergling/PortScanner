@@ -1,7 +1,8 @@
 # Third-party notices
 
-PortScanner has no third-party Python runtime packages. The distributed
-binaries include the following components:
+PortScanner itself is licensed under the [MIT license](LICENSE). It has no
+third-party Python runtime packages. The distributed binaries include the
+following components:
 
 ## CPython
 

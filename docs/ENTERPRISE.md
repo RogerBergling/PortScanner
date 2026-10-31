@@ -53,7 +53,6 @@
 
 | Gap | Risk | Recommended action |
 | --- | --- | --- |
-| No project license | Cannot establish redistribution/use rights | Select and add a license (e.g. Apache-2.0, MIT, or proprietary) |
 | Unsigned Windows binaries | SmartScreen warnings; tampering harder to detect | Authenticode sign both executables |
 | No built-in target allowlist | User can scan any reachable target | Add scope policy or enforce in wrapper |
 | No structured audit log | Hard to prove who scanned what/when | Add JSONL audit logging for CLI and GUI |
@@ -81,6 +80,7 @@ See [SECURITY.md](../SECURITY.md) for reporting and supported versions.
 
 ## Procurement notes
 
+- Project license: MIT (see [LICENSE](../LICENSE)).
 - Runtime: Python standard library + Tcl/Tk.
 - Build tool: PyInstaller (GPLv2-or-later with the PyInstaller bootloader
   exception that permits distribution of non-free/commercial applications).
@@ -89,8 +89,8 @@ See [SECURITY.md](../SECURITY.md) for reporting and supported versions.
 
 ## Roadmap for enterprise readiness
 
-1. Add project license and code signing.
-2. Add target allowlist/policy enforcement and structured audit logging.
+1. Add code signing.
+2. Add target allowlist/deny enforcement and structured audit logging.
 3. Add GUI integration tests and coverage thresholds.
 4. Add SBOM, artifact attestations, and hash-pinned build dependencies.
 5. Add Linux packages (.deb/RPM/AppImage) and a Windows installer/MSIX.
