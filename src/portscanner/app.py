@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import csv
-import json
 import os
 import queue
 import sys
 import time
-from pathlib import Path
 
 try:
     import tkinter as tk
@@ -21,6 +19,13 @@ except ImportError as exc:  # pragma: no cover - depends on the system
     _TK_IMPORT_ERROR = exc
 
 from . import __version__
+from .config import (
+    AppConfig,
+    PROTOCOL_CHOICES,
+    config_directory,
+    load_config,
+    save_config,
+)
 from .engine import PortResult, ScanConfig, ScanEngine, ScanFinished, ScanProgress
 from .ports import PRESETS, PortError, parse_ports
 from .targets import MAX_HOSTS, TargetError, estimate_targets, expand_targets
@@ -38,29 +43,8 @@ RED = "#f87171"
 BORDER = "#2a3040"
 
 
-def _config_directory() -> Path:
-    """Return the per-user config directory for the current platform."""
-    if sys.platform == "win32":
-        appdata = os.environ.get("APPDATA", "").strip()
-        base = (
-            Path(appdata).expanduser()
-            if appdata
-            else Path.home() / "AppData" / "Roaming"
-        )
-        return base / "portscanner"
-
-    override = os.environ.get("XDG_CONFIG_HOME", "").strip()
-    if override:
-        base = Path(override).expanduser()
-        if base.is_absolute():
-            return base / "portscanner"
-    return Path.home() / ".config" / "portscanner"
-
-
-CONFIG_DIR = _config_directory()
+CONFIG_DIR = config_directory()
 CONFIG_FILE = CONFIG_DIR / "config.json"
-
-PROTOCOL_CHOICES = ("TCP", "UDP", "TCP + UDP")
 
 USAGE = """portscanner - fast TCP/UDP port scanner
 
@@ -902,31 +886,20 @@ class PortScannerApp:
     # ------------------------------------------------------------- settings
 
     def _load_config(self) -> None:
-        try:
-            data = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            return
-        if not isinstance(data, dict):
-            return
+        config = load_config(CONFIG_FILE)
+        self.target_var.set(config.targets)
+        self.ports_var.set(config.ports)
+        self.protocol_var.set(config.protocol)
+        self.timeout_var.set(config.timeout)
+        self.concurrency_var.set(config.concurrency)
+        self.filtered_var.set(config.show_filtered)
 
-        self.target_var.set(str(data.get("targets", "")))
-        self.ports_var.set(str(data.get("ports", "22,80,443")))
-        protocol = str(data.get("protocol", "TCP"))
-        if protocol in PROTOCOL_CHOICES:
-            self.protocol_var.set(protocol)
-        self.timeout_var.set(str(data.get("timeout", "1.0")))
-        self.concurrency_var.set(str(data.get("concurrency", "1000")))
-        self.filtered_var.set(bool(data.get("show_filtered", False)))
-
-        all_ports = bool(data.get("all_ports", False))
-        self.all_ports_var.set(all_ports)
-        if all_ports:
+        self.all_ports_var.set(config.all_ports)
+        if config.all_ports:
             self.ports_entry.configure(state="disabled")
             self.preset_var.set("All ports (1-65535)")
-        else:
-            preset_name = str(data.get("preset", "Custom"))
-            if preset_name in PRESETS:
-                self.preset_var.set(preset_name)
+        elif config.preset in PRESETS:
+            self.preset_var.set(config.preset)
 
     def _bind_traces(self) -> None:
         self.target_var.trace_add("write", lambda *_: self._update_estimate())
@@ -935,21 +908,18 @@ class PortScannerApp:
         self.protocol_var.trace_add("write", lambda *_: self._update_estimate())
 
     def _save_config(self) -> None:
-        data = {
-            "targets": self.target_var.get(),
-            "ports": self.ports_var.get(),
-            "all_ports": self.all_ports_var.get(),
-            "preset": self.preset_var.get(),
-            "protocol": self.protocol_var.get(),
-            "timeout": self.timeout_var.get(),
-            "concurrency": self.concurrency_var.get(),
-            "show_filtered": self.filtered_var.get(),
-        }
+        config = AppConfig(
+            targets=self.target_var.get(),
+            ports=self.ports_var.get(),
+            all_ports=self.all_ports_var.get(),
+            preset=self.preset_var.get(),
+            protocol=self.protocol_var.get(),
+            timeout=self.timeout_var.get(),
+            concurrency=self.concurrency_var.get(),
+            show_filtered=self.filtered_var.get(),
+        )
         try:
-            CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-            CONFIG_FILE.write_text(
-                json.dumps(data, indent=2) + "\n", encoding="utf-8"
-            )
+            save_config(CONFIG_FILE, config)
         except OSError:
             # Settings are a convenience; never block a scan over them.
             pass

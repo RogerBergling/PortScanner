@@ -156,6 +156,20 @@ error, `130` interrupted. Run `portscanner scan --help` for the full reference.
 - GitHub Actions are pinned to immutable commit SHAs.
 - On Linux, Python and Tkinter come from the operating system; keep them
   updated through your distribution's security updates.
+- Configuration is versioned, validated, and written atomically with
+  user-private permissions.
+
+## Governance and assurance
+
+- [Security policy and vulnerability reporting](SECURITY.md)
+- [Contributing guide](CONTRIBUTING.md)
+- [Changelog](CHANGELOG.md)
+- [Architecture and trust boundaries](docs/ARCHITECTURE.md)
+- [Enterprise deployment and assurance](docs/ENTERPRISE.md)
+- [Third-party notices](THIRD-PARTY-NOTICES.md)
+
+Project licensing has not yet been declared. This is a release blocker for
+redistribution; see the enterprise guide before commercial deployment.
 
 ## How to use
 
@@ -208,14 +222,20 @@ For quick results, start with the **Common ports** preset.
 src/portscanner/
   app.py       Tkinter interface and result handling
   cli.py       headless scan command and output formats
+  config.py    validated, atomic application settings
   engine.py    asyncio TCP/UDP scan engine
   ports.py     port parsing and presets
   targets.py   target expansion (IP, CIDR, ranges, DNS)
 packaging/
   windows_launcher.py      PyInstaller entry point for PortScanner.exe
   windows_cli_launcher.py  PyInstaller entry point for PortScannerCLI.exe
+docs/          architecture and enterprise guidance
 tests/         unit and integration tests
-.github/       CI, Dependabot, and Windows build workflows
+.github/       CI, CodeQL, Dependabot, and Windows build workflows
+SECURITY.md        vulnerability disclosure and support policy
+CONTRIBUTING.md    development and release workflow
+CHANGELOG.md       release history
+THIRD-PARTY-NOTICES.md  runtime and build component notices
 requirements-build.txt  pinned PyInstaller build dependency
 requirements-dev.txt    pinned pip-audit and Ruff tooling
 pyproject.toml          Ruff configuration

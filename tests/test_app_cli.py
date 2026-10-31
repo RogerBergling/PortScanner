@@ -2,15 +2,12 @@ from __future__ import annotations
 
 import contextlib
 import io
-import os
 import sys
-import tempfile
 import unittest
-from pathlib import Path
 from unittest import mock
 
 from portscanner import __version__
-from portscanner.app import _config_directory, cli, main
+from portscanner.app import cli, main
 
 
 class CommandLineTests(unittest.TestCase):
@@ -65,60 +62,6 @@ class CommandLineTests(unittest.TestCase):
             cli()
         self.assertEqual(raised.exception.code, 2)
         self.assertIn("--bogus", stderr.getvalue())
-
-
-class ConfigDirectoryTests(unittest.TestCase):
-    def test_default_location(self) -> None:
-        with (
-            mock.patch("portscanner.app.sys.platform", "linux"),
-            mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": ""}),
-        ):
-            self.assertEqual(
-                _config_directory(),
-                Path.home() / ".config" / "portscanner",
-            )
-
-    def test_absolute_xdg_override(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            with (
-                mock.patch("portscanner.app.sys.platform", "linux"),
-                mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": directory}),
-            ):
-                self.assertEqual(
-                    _config_directory(),
-                    Path(directory) / "portscanner",
-                )
-
-    def test_relative_xdg_override_is_ignored(self) -> None:
-        with (
-            mock.patch("portscanner.app.sys.platform", "linux"),
-            mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": "relative/path"}),
-        ):
-            self.assertEqual(
-                _config_directory(),
-                Path.home() / ".config" / "portscanner",
-            )
-
-    def test_windows_uses_appdata(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            with (
-                mock.patch("portscanner.app.sys.platform", "win32"),
-                mock.patch.dict(os.environ, {"APPDATA": directory}),
-            ):
-                self.assertEqual(
-                    _config_directory(),
-                    Path(directory) / "portscanner",
-                )
-
-    def test_windows_falls_back_to_roaming_appdata(self) -> None:
-        with (
-            mock.patch("portscanner.app.sys.platform", "win32"),
-            mock.patch.dict(os.environ, {"APPDATA": ""}),
-        ):
-            self.assertEqual(
-                _config_directory(),
-                Path.home() / "AppData" / "Roaming" / "portscanner",
-            )
 
 
 if __name__ == "__main__":
