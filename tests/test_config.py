@@ -25,12 +25,13 @@ class ConfigDirectoryTests(unittest.TestCase):
         self.assertEqual(path, Path("/home/tester/.config/portscanner"))
 
     def test_linux_absolute_xdg_override(self) -> None:
-        path = config_directory(
-            platform="linux",
-            environ={"XDG_CONFIG_HOME": "/opt/config"},
-            home=Path("/home/tester"),
-        )
-        self.assertEqual(path, Path("/opt/config/portscanner"))
+        with tempfile.TemporaryDirectory() as directory:
+            path = config_directory(
+                platform="linux",
+                environ={"XDG_CONFIG_HOME": directory},
+                home=Path("/home/tester"),
+            )
+            self.assertEqual(path, Path(directory) / "portscanner")
 
     def test_linux_relative_xdg_override_is_ignored(self) -> None:
         path = config_directory(
