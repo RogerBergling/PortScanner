@@ -19,16 +19,18 @@ protocol, and watch results appear live.
 - Live progress, scan rate, open-port counter and result table
 - Sortable results, copy selected `host:port/protocol` entries with `Ctrl+C`,
   export to CSV
+- Headless `scan` mode with text, CSV, or JSON output and automation exit codes
 - Settings are remembered between runs
 - Single-file Linux executable named `portscanner`
-- Self-contained Windows 11 executable named `PortScanner.exe`
+- Self-contained Windows 11 executables named `PortScanner.exe` and
+  `PortScannerCLI.exe`
 
 ## Requirements
 
 - **Linux:** Python **3.11+** with Tkinter and a graphical session
   (X11 or Wayland)
 - **Windows 11:** no Python installation is required for the prebuilt
-  `PortScanner.exe`
+  `PortScanner.exe` or `PortScannerCLI.exe`
 - No third-party Python packages are required at runtime
 
 Install the Tkinter bindings if they are missing:
@@ -62,24 +64,29 @@ sudo make install PREFIX=/usr
 Then start it from a terminal with `portscanner`, or from your desktop
 environment's application launcher.
 
-Run the test suite:
+Run the test suite and linter:
 
 ```bash
 make test
+make lint      # requires the tools in requirements-dev.txt
 ```
 
 The tests use only the Python standard library and do not require a display.
 
 ### Build the Windows executable
 
-The checked-in `PortScanner.exe` is a self-contained 64-bit build produced with
-Python **3.14.10** and the pinned build dependencies in
-`requirements-build.txt`. To rebuild it on Windows:
+The checked-in Windows executables are self-contained 64-bit builds produced
+with Python **3.14.10** and the pinned build dependencies in
+`requirements-build.txt`. To rebuild them on Windows:
 
 ```powershell
 py -3.14 -m pip install -r requirements-build.txt
+
 py -3.14 -m PyInstaller --noconfirm --clean --onefile --windowed `
   --name PortScanner --paths src --specpath build packaging/windows_launcher.py
+
+py -3.14 -m PyInstaller --noconfirm --clean --onefile --console `
+  --name PortScannerCLI --paths src --specpath build packaging/windows_cli_launcher.py
 ```
 
 The GitHub Actions
@@ -89,24 +96,62 @@ executable on `windows-latest`.
 
 ## Windows 11
 
-A ready-to-run 64-bit `PortScanner.exe` is included in the repository. It is a
-self-contained build, so Python and Tkinter do not need to be installed.
+Two ready-to-run 64-bit executables are included in the repository:
 
-The executable is unsigned, so Windows SmartScreen may ask for confirmation the
-first time it is started. Verify the download against `SHA256SUMS`:
+- `PortScanner.exe` — graphical interface
+- `PortScannerCLI.exe` — headless console interface
+
+Both are self-contained builds, so Python and Tkinter do not need to be
+installed. They are unsigned, so Windows SmartScreen may ask for confirmation
+the first time they are started. Verify the downloads against `SHA256SUMS`:
 
 ```powershell
 Get-FileHash .\PortScanner.exe -Algorithm SHA256
+Get-FileHash .\PortScannerCLI.exe -Algorithm SHA256
 ```
+
+## Headless CLI
+
+The GUI can be bypassed for scripts, servers, and CI:
+
+```bash
+# Linux
+portscanner scan 192.168.1.10 -p 22,80,443
+portscanner scan 192.168.1.0/24 --ports common --format json
+portscanner scan example.com --protocol both --show-filtered
+
+# Windows
+.\PortScannerCLI.exe scan 192.168.1.10 -p 22,80,443
+.\PortScannerCLI.exe scan example.com --format json -o results.json
+```
+
+Common options:
+
+- `-p/--ports` — port list, range, or preset keyword (default: `common`)
+- `--all-ports` — scan all 65,535 ports
+- `--protocol tcp|udp|both`
+- `--timeout SECONDS`
+- `--concurrency N` (1-5000)
+- `--show-filtered` — include UDP `open|filtered`
+- `--format text|csv|json`
+- `-o/--output FILE`
+- `--fail-on-open` — exit with status 1 when an open port is found
+- `--quiet`
+- `--yes` — allow scans over 2,000,000 probes
+
+Exit codes: `0` success, `1` findings or scan failure, `2` usage/validation
+error, `130` interrupted. Run `portscanner scan --help` for the full reference.
 
 ## Security and dependency updates
 
 - The application has **no third-party runtime dependencies**; it uses only the
   Python standard library and Tkinter.
-- The Windows executable bundles a current, patched Python runtime. The exact
+- Both Windows executables bundle a current, patched Python runtime. The exact
   version is printed by the build workflow for every release.
 - Build-only dependencies are pinned in `requirements-build.txt`, and CI runs
   `pip-audit` against the build and audit tooling on every Windows build.
+- CI runs the full test suite on Linux and Windows with Python 3.11 and 3.14,
+  plus Ruff linting and a Linux zipapp build.
 - Dependabot checks GitHub Actions and Python build dependencies weekly.
 - GitHub Actions are pinned to immutable commit SHAs.
 - On Linux, Python and Tkinter come from the operating system; keep them
@@ -162,15 +207,18 @@ For quick results, start with the **Common ports** preset.
 ```text
 src/portscanner/
   app.py       Tkinter interface and result handling
+  cli.py       headless scan command and output formats
   engine.py    asyncio TCP/UDP scan engine
   ports.py     port parsing and presets
   targets.py   target expansion (IP, CIDR, ranges, DNS)
 packaging/
-  windows_launcher.py  PyInstaller entry point for PortScanner.exe
+  windows_launcher.py      PyInstaller entry point for PortScanner.exe
+  windows_cli_launcher.py  PyInstaller entry point for PortScannerCLI.exe
 tests/         unit and integration tests
-.github/       Dependabot and Windows 11 build workflow
+.github/       CI, Dependabot, and Windows build workflows
 requirements-build.txt  pinned PyInstaller build dependency
-requirements-dev.txt    pinned pip-audit tooling
+requirements-dev.txt    pinned pip-audit and Ruff tooling
+pyproject.toml          Ruff configuration
 SHA256SUMS     checksums for the committed executables
 Makefile       build, test, install
 ```

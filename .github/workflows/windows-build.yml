@@ -62,7 +62,7 @@ jobs:
           PYTHONPATH: src
         run: python -m unittest discover -s tests -v
 
-      - name: Build executable
+      - name: Build GUI executable
         run: >
           python -m PyInstaller
           --noconfirm
@@ -74,32 +74,56 @@ jobs:
           --specpath build
           packaging/windows_launcher.py
 
-      - name: Verify and checksum executable
+      - name: Build CLI executable
+        run: >
+          python -m PyInstaller
+          --noconfirm
+          --clean
+          --onefile
+          --console
+          --name PortScannerCLI
+          --paths src
+          --specpath build
+          packaging/windows_cli_launcher.py
+
+      - name: Verify and checksum executables
         shell: pwsh
         run: |
-          if (-not (Test-Path dist/PortScanner.exe)) {
-            throw "PyInstaller did not produce dist/PortScanner.exe"
+          foreach ($name in @("PortScanner.exe", "PortScannerCLI.exe")) {
+            $path = Join-Path "dist" $name
+            if (-not (Test-Path $path)) {
+              throw "PyInstaller did not produce $path"
+            }
+            Get-Item $path | Format-List Name, Length
           }
-          Get-Item dist/PortScanner.exe | Format-List Name, Length
-          $hash = (Get-FileHash dist/PortScanner.exe -Algorithm SHA256).Hash.ToLower()
-          "$hash  PortScanner.exe" | Set-Content dist/SHA256SUMS
+
+          $guiHash = (Get-FileHash dist/PortScanner.exe -Algorithm SHA256).Hash.ToLower()
+          $cliHash = (Get-FileHash dist/PortScannerCLI.exe -Algorithm SHA256).Hash.ToLower()
+          $lines = @(
+            "$guiHash  PortScanner.exe",
+            "$cliHash  PortScannerCLI.exe"
+          )
+          $lines | Set-Content dist/SHA256SUMS
           Get-Content dist/SHA256SUMS
 
-      - name: Smoke test executable
+      - name: Smoke test executables
         shell: pwsh
         run: |
-          $process = Start-Process -FilePath dist/PortScanner.exe `
-            -ArgumentList "--version" -Wait -PassThru
-          if ($process.ExitCode -ne 0) {
-            throw "PortScanner.exe --version exited with $($process.ExitCode)"
+          foreach ($name in @("PortScanner.exe", "PortScannerCLI.exe")) {
+            $process = Start-Process -FilePath (Join-Path "dist" $name) `
+              -ArgumentList "--version" -Wait -PassThru
+            if ($process.ExitCode -ne 0) {
+              throw "$name --version exited with $($process.ExitCode)"
+            }
           }
 
-      - name: Upload executable
+      - name: Upload executables
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: PortScanner-windows-x64
           path: |
             dist/PortScanner.exe
+            dist/PortScannerCLI.exe
             dist/SHA256SUMS
           if-no-files-found: error
           retention-days: 14

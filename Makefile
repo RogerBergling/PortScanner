@@ -3,7 +3,7 @@ PREFIX ?= /usr/local
 BINARY := portscanner
 SOURCES := $(shell find src -name '*.py')
 
-.PHONY: all build run test install uninstall clean
+.PHONY: all build run test lint check install uninstall clean
 
 all: build
 
@@ -20,6 +20,11 @@ run:
 test:
 	PYTHONPATH=src $(PYTHON) -m unittest discover -s tests -v
 
+lint:
+	ruff check src tests packaging
+
+check: lint test
+
 install: $(BINARY)
 	install -d "$(DESTDIR)$(PREFIX)/bin"
 	install -m 755 $(BINARY) "$(DESTDIR)$(PREFIX)/bin/$(BINARY)"
@@ -29,3 +34,6 @@ uninstall:
 
 clean:
 	rm -f $(BINARY)
+	rm -rf build dist
+	find . -name __pycache__ -type d -prune -exec rm -rf {} +
+	find . -name '*.spec' -type f -delete

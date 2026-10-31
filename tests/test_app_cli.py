@@ -47,6 +47,14 @@ class CommandLineTests(unittest.TestCase):
         self.assertEqual(stdout, "")
         self.assertIn("--bogus", stderr)
 
+    def test_scan_subcommand_delegates_to_cli(self) -> None:
+        with mock.patch("portscanner.cli.main", return_value=7) as scan_main:
+            code, stdout, stderr = self.run_main(["scan", "127.0.0.1"])
+        self.assertEqual(code, 7)
+        self.assertEqual(stdout, "")
+        self.assertEqual(stderr, "")
+        scan_main.assert_called_once_with(["127.0.0.1"])
+
     def test_cli_preserves_exit_status(self) -> None:
         stderr = io.StringIO()
         with (

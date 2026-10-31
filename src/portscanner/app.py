@@ -62,18 +62,26 @@ CONFIG_FILE = CONFIG_DIR / "config.json"
 
 PROTOCOL_CHOICES = ("TCP", "UDP", "TCP + UDP")
 
-USAGE = """portscanner - fast TCP/UDP port scanner with a graphical interface
+USAGE = """portscanner - fast TCP/UDP port scanner
 
 Usage:
-  portscanner            Start the graphical interface
-  portscanner --version  Print the version
-  portscanner --help     Show this help
+  portscanner                     Start the graphical interface
+  portscanner scan TARGET [opts]  Run a headless scan
+  portscanner --version           Print the version
+  portscanner --help              Show this help
 
 Targets accept single addresses, CIDR networks, ranges and hostnames, e.g.:
   192.168.1.10
   192.168.1.0/24
   10.0.0.5-10.0.0.25
   example.com
+
+Headless examples:
+  portscanner scan 192.168.1.10 -p 22,80,443
+  portscanner scan 192.168.1.0/24 --ports common --format json
+  portscanner scan example.com --protocol both --fail-on-open
+
+Run 'portscanner scan --help' for all headless options.
 
 Only scan systems you own or are authorized to test.
 """
@@ -259,7 +267,7 @@ class PortScannerApp:
         ).pack(side="left", padx=(10, 0), pady=(12, 0))
         ttk.Label(
             header,
-            text="Fast TCP/UDP discovery for Linux",
+            text="Fast TCP/UDP discovery for Linux and Windows",
             style="Subtitle.TLabel",
         ).pack(side="right", pady=(12, 0))
 
@@ -964,6 +972,11 @@ class PortScannerApp:
 
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
+
+    if args and args[0] == "scan":
+        from .cli import main as scan_main
+
+        return scan_main(args[1:])
 
     unknown = [arg for arg in args if arg not in ("-h", "--help", "--version")]
     if unknown:

@@ -11,6 +11,8 @@ __pycache__/
 *.py[cod]
 .venv/
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
 *.spec
 
 # Node / build
