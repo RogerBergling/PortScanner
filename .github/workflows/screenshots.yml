@@ -1,0 +1,45 @@
+name: Screenshots
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - screenshots
+
+permissions:
+  contents: read
+
+concurrency:
+  group: screenshots-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  capture:
+    name: Capture README screenshots
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install display tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            python3-tk xvfb scrot imagemagick xdotool xterm
+
+      - name: Capture screenshots
+        env:
+          PYTHONPATH: src
+        run: |
+          xvfb-run -a -s "-screen 0 1280x900x24" \
+            /usr/bin/python3 packaging/make_screenshots.py docs/screenshots
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: readme-screenshots
+          path: docs/screenshots/*.png
+          if-no-files-found: error
+          retention-days: 14
