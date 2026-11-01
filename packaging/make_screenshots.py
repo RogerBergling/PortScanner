@@ -54,7 +54,7 @@ def capture_gui(path: Path) -> None:
     app.progress["value"] = 100.0
     app.percent_var.set("100%")
     app.status_var.set(
-        "Scan complete in 2.4s — 1,792 probes, 8 open port(s) found."
+        "Scan complete in 2.4s — 1,524 probes, 8 open port(s) found."
     )
     app.stats_var.set("8 open · 2.4s · 747/s")
 
@@ -94,7 +94,7 @@ def capture_cli(path: Path) -> None:
     command = (
         f"cd {shlex.quote(str(ROOT))} && "
         f"PYTHONPATH=src /usr/bin/python3 -m portscanner scan 127.0.0.1 "
-        f"-p 22,80,443,{port} --timeout 0.3 --concurrency 4; sleep 10"
+        f"-p 80,443,8080,{port} --timeout 0.3 --concurrency 4; sleep 10"
     )
     process = subprocess.Popen(
         [
@@ -102,7 +102,7 @@ def capture_cli(path: Path) -> None:
             "-title",
             "PortScanner CLI",
             "-geometry",
-            "120x24+0+0",
+            "100x16+0+0",
             "-bg",
             "#0f1117",
             "-fg",
@@ -110,7 +110,7 @@ def capture_cli(path: Path) -> None:
             "-fa",
             "DejaVu Sans Mono",
             "-fs",
-            "11",
+            "12",
             "-e",
             "bash",
             "-lc",
