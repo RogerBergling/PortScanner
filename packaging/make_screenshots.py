@@ -91,8 +91,13 @@ def _serve_port() -> tuple[socket.socket, int, threading.Event]:
 
 def capture_cli(path: Path) -> None:
     server, port, stop = _serve_port()
+    display_command = (
+        f"portscanner scan 127.0.0.1 -p 80,443,8080,{port} "
+        "--timeout 0.3 --concurrency 4"
+    )
     command = (
         f"cd {shlex.quote(str(ROOT))} && "
+        f"printf '%s\\n' '$ {display_command}' && "
         f"PYTHONPATH=src /usr/bin/python3 -m portscanner scan 127.0.0.1 "
         f"-p 80,443,8080,{port} --timeout 0.3 --concurrency 4; sleep 10"
     )
@@ -102,7 +107,7 @@ def capture_cli(path: Path) -> None:
             "-title",
             "PortScanner CLI",
             "-geometry",
-            "100x16+0+0",
+            "100x12+0+0",
             "-bg",
             "#0f1117",
             "-fg",
