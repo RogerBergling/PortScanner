@@ -11,6 +11,7 @@ semantic versioning.
 - Version, build number, and build timestamp in the GUI header.
 - Build metadata in `--version` output and the README main page.
 - Centralized release metadata in `build_info.py`.
+- README screenshots captured from the real GUI and CLI.
 
 ## [1.2.0] - 2026-10-31
 

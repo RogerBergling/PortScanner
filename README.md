@@ -13,6 +13,16 @@ protocol, and watch results appear live.
 ![status](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%2011-blue)
 ![version](https://img.shields.io/badge/version-1.3.0-blue)
 
+## Screenshots
+
+![PortScanner GUI showing sample scan results](docs/screenshots/gui.png)
+
+*GUI with sample TCP results.*
+
+![PortScanner CLI showing a local scan](docs/screenshots/cli.png)
+
+*Headless CLI scan with text output.*
+
 ## Features
 
 - Single IPs, CIDR networks, address ranges, hostnames, or a mixture
@@ -235,9 +245,11 @@ src/portscanner/
   ports.py     port parsing and presets
   targets.py   target expansion (IP, CIDR, ranges, DNS)
 packaging/
+  make_screenshots.py      reproducible README screenshot capture
   windows_launcher.py      PyInstaller entry point for PortScanner.exe
   windows_cli_launcher.py  PyInstaller entry point for PortScannerCLI.exe
 docs/          architecture and enterprise guidance
+  screenshots/ GUI and CLI images used by this README
 tests/         unit and integration tests
 LICENSE        MIT license
 .github/       CI, CodeQL, Dependabot, and Windows build workflows

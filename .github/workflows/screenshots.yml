@@ -2,9 +2,6 @@ name: Screenshots
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - screenshots
 
 permissions:
   contents: read
