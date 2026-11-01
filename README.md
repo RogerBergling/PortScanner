@@ -6,7 +6,12 @@ PortScanner uses asynchronous connect scans, so it needs **no root privileges**
 and starts scanning immediately. Enter one or more targets, choose ports and a
 protocol, and watch results appear live.
 
+| Version | Build | Built |
+| --- | --- | --- |
+| **1.3.0** | **20261101.1** | **2026-11-01 11:14 UTC** |
+
 ![status](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%2011-blue)
+![version](https://img.shields.io/badge/version-1.3.0-blue)
 
 ## Features
 
@@ -21,6 +26,7 @@ protocol, and watch results appear live.
   export to CSV
 - Headless `scan` mode with text, CSV, or JSON output and automation exit codes
 - Settings are remembered between runs
+- Version, build number, and build date/time shown in the GUI and CLI
 - Single-file Linux executable named `portscanner`
 - Self-contained Windows 11 executables named `PortScanner.exe` and
   `PortScannerCLI.exe`
@@ -222,6 +228,7 @@ For quick results, start with the **Common ports** preset.
 ```text
 src/portscanner/
   app.py       Tkinter interface and result handling
+  build_info.py  version, build number, and build timestamp
   cli.py       headless scan command and output formats
   config.py    validated, atomic application settings
   engine.py    asyncio TCP/UDP scan engine

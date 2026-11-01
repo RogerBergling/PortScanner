@@ -19,6 +19,7 @@ except ImportError as exc:  # pragma: no cover - depends on the system
     _TK_IMPORT_ERROR = exc
 
 from . import __version__
+from .build_info import build_label, version_line
 from .config import (
     AppConfig,
     PROTOCOL_CHOICES,
@@ -89,7 +90,7 @@ class PortScannerApp:
         self._bind_traces()
         self._update_estimate()
 
-        root.title("PortScanner")
+        root.title(f"PortScanner {__version__}")
         root.geometry("1120x760")
         root.minsize(900, 620)
         root.configure(bg=BG)
@@ -249,11 +250,17 @@ class PortScannerApp:
         ttk.Label(
             header, text=f"v{__version__}", style="Subtitle.TLabel"
         ).pack(side="left", padx=(10, 0), pady=(12, 0))
+
+        metadata = ttk.Frame(header)
+        metadata.pack(side="right", pady=(6, 0))
         ttk.Label(
-            header,
+            metadata, text=build_label(), style="Subtitle.TLabel"
+        ).pack(anchor="e")
+        ttk.Label(
+            metadata,
             text="Fast TCP/UDP discovery for Linux and Windows",
             style="Subtitle.TLabel",
-        ).pack(side="right", pady=(12, 0))
+        ).pack(anchor="e")
 
         form = ttk.Frame(self.root, style="Panel.TFrame", padding=(20, 16, 20, 16))
         form.grid(row=1, column=0, sticky="ew", padx=24, pady=(10, 8))
@@ -954,7 +961,7 @@ def main(argv: list[str] | None = None) -> int:
         print("Try 'portscanner --help' for usage.", file=sys.stderr)
         return 2
     if "--version" in args:
-        print(f"portscanner {__version__}")
+        print(version_line())
         return 0
     if "-h" in args or "--help" in args:
         print(USAGE)

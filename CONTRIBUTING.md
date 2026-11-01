@@ -59,7 +59,7 @@ After a rebuild:
 ## Versioning and changelog
 
 - Follow semantic versioning.
-- Update `src/portscanner/__init__.py` and `CHANGELOG.md`.
+- Update `src/portscanner/__init__.py`, `build_info.py`, and `CHANGELOG.md`.
 - Rebuild the Linux zipapp and Windows executables for release changes.
 - Update `SHA256SUMS` whenever a committed binary changes.
 

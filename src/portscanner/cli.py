@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-from . import __version__
+from .build_info import version_line
 from .engine import (
     PortResult,
     ScanConfig,
@@ -138,7 +138,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--version",
         action="version",
-        version=f"portscanner {__version__}",
+        version=version_line(),
     )
     return parser
 

@@ -6,8 +6,8 @@ import sys
 import unittest
 from unittest import mock
 
-from portscanner import __version__
 from portscanner.app import cli, main
+from portscanner.build_info import version_line
 
 
 class CommandLineTests(unittest.TestCase):
@@ -21,7 +21,7 @@ class CommandLineTests(unittest.TestCase):
     def test_version(self) -> None:
         code, stdout, stderr = self.run_main(["--version"])
         self.assertEqual(code, 0)
-        self.assertEqual(stdout, f"portscanner {__version__}\n")
+        self.assertEqual(stdout, f"{version_line()}\n")
         self.assertEqual(stderr, "")
 
     def test_help(self) -> None:

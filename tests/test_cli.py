@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from portscanner.build_info import version_line
 from portscanner.cli import main
 
 
@@ -27,6 +28,15 @@ def free_tcp_port() -> int:
 
 
 class CliTests(unittest.TestCase):
+    def test_version_includes_build_metadata(self) -> None:
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout), self.assertRaises(
+            SystemExit
+        ) as raised:
+            main(["--version"])
+        self.assertEqual(raised.exception.code, 0)
+        self.assertEqual(stdout.getvalue(), f"{version_line()}\n")
+
     def test_json_output_finds_open_port(self) -> None:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
             server.bind(("127.0.0.1", 0))

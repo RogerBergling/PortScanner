@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 semantic versioning.
 
+## [1.3.0] - 2026-11-01
+
+### Added
+
+- Version, build number, and build timestamp in the GUI header.
+- Build metadata in `--version` output and the README main page.
+- Centralized release metadata in `build_info.py`.
+
 ## [1.2.0] - 2026-10-31
 
 ### Added

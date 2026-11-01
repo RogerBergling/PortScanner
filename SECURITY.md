@@ -4,9 +4,9 @@
 
 | Version | Support |
 | --- | --- |
-| 1.2.x | Current release line; security fixes |
-| 1.1.x | Security fixes only |
-| < 1.1 | Unsupported |
+| 1.3.x | Current release line; security fixes |
+| 1.2.x | Security fixes only |
+| < 1.2 | Unsupported |
 
 Only the official binaries published in this repository and builds from tagged
 source are supported. Linux builds use the host's Python and Tk packages, so

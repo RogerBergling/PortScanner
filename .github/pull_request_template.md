@@ -17,6 +17,7 @@
 ## Release checklist
 
 - [ ] Version updated in `src/portscanner/__init__.py`
+- [ ] Build number and timestamp updated in `src/portscanner/build_info.py`
 - [ ] `CHANGELOG.md` updated
 - [ ] `portscanner`, `PortScanner.exe`, and `PortScannerCLI.exe` rebuilt if source changed
 - [ ] `SHA256SUMS` updated and verified

@@ -10,6 +10,7 @@ small supply chain over raw-packet features.
 
 ```text
 app.py        Tkinter GUI, event polling, result table, CSV export
+build_info.py Release version, build number, and build timestamp
 cli.py        Headless argument parsing, scan orchestration, text/CSV/JSON
 config.py     Versioned settings, validation, atomic persistence
 engine.py     asyncio TCP/UDP probes and scan lifecycle events
