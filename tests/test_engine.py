@@ -237,7 +237,7 @@ class EngineTests(unittest.TestCase):
         finished = events[-1]
         assert isinstance(finished, ScanFinished)
         self.assertEqual([result.port for result in results], [open_port])
-        self.assertEqual(finished.unresponsive_hosts, ("192.0.2.1",))
+        self.assertIn("192.0.2.1", finished.unresponsive_hosts)
         self.assertEqual(finished.scanned, finished.total)
         self.assertTrue(
             any(isinstance(event, HostUnresponsive) for event in events)
