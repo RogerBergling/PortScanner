@@ -12,6 +12,7 @@ semantic versioning.
 - Build metadata in `--version` output and the README main page.
 - Centralized release metadata in `build_info.py`.
 - README screenshots captured from the real GUI and CLI.
+- README quick-start flow with collapsible build and security details.
 
 ## [1.2.0] - 2026-10-31
 

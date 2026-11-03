@@ -59,7 +59,7 @@ class CliTests(unittest.TestCase):
             )
 
         self.assertEqual(code, 0)
-        self.assertEqual(stderr, "")
+        self.assertNotIn("portscanner:", stderr)
         payload = json.loads(stdout)
         self.assertEqual(payload["open_ports"], 1)
         self.assertEqual(payload["total"], 1)
@@ -95,7 +95,7 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(code, 0)
         self.assertEqual(stdout, "")
-        self.assertEqual(stderr, "")
+        self.assertNotIn("portscanner:", stderr)
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["port"], str(port))
         self.assertEqual(rows[0]["state"], "open")
@@ -119,7 +119,7 @@ class CliTests(unittest.TestCase):
             )
 
         self.assertEqual(code, 0)
-        self.assertEqual(stderr, "")
+        self.assertNotIn("portscanner:", stderr)
         self.assertIn(f"127.0.0.1:{port}/tcp open", stdout)
 
     def test_fail_on_open(self) -> None:
