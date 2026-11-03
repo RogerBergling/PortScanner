@@ -88,6 +88,8 @@ jobs:
           make build
           ./portscanner --version
           ./portscanner scan --help >/dev/null
+          make dist
+          tar -tzf portscanner-*-linux.tar.gz
 
       - name: Run tests through Makefile
         run: make test

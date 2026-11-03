@@ -20,6 +20,7 @@ from .engine import (
     ScanFinished,
     validate_config,
 )
+from .policy import PolicyError, load_policy
 from .ports import PortError, parse_ports
 from .targets import TargetError, expand_targets
 
@@ -53,6 +54,26 @@ def _concurrency(value: str) -> int:
     if not 1 <= count <= 5000:
         raise argparse.ArgumentTypeError("must be between 1 and 5000")
     return count
+
+
+def _positive_int(value: str) -> int:
+    try:
+        number = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("must be a whole number") from None
+    if number < 1:
+        raise argparse.ArgumentTypeError("must be positive")
+    return number
+
+
+def _host_failures(value: str) -> int:
+    try:
+        number = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("must be a whole number") from None
+    if not 0 <= number <= 1000:
+        raise argparse.ArgumentTypeError("must be between 0 and 1000")
+    return number
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -102,6 +123,45 @@ def build_parser() -> argparse.ArgumentParser:
         help="maximum probes in flight, 1-5000 (default: 1000)",
     )
     parser.add_argument(
+        "--host-failures",
+        type=_host_failures,
+        default=20,
+        metavar="N",
+        help=(
+            "skip remaining ports for a host after N consecutive timeouts "
+            "(0 disables, default: 20)"
+        ),
+    )
+    parser.add_argument(
+        "--policy",
+        metavar="FILE",
+        help="JSON target allow/deny policy and scan limits",
+    )
+    parser.add_argument(
+        "--allow-cidr",
+        action="append",
+        metavar="CIDR",
+        help="only scan targets inside this CIDR (repeatable; overrides policy)",
+    )
+    parser.add_argument(
+        "--deny-cidr",
+        action="append",
+        metavar="CIDR",
+        help="never scan targets inside this CIDR (repeatable; overrides policy)",
+    )
+    parser.add_argument(
+        "--max-hosts",
+        type=_positive_int,
+        metavar="N",
+        help="hard host limit (overrides policy)",
+    )
+    parser.add_argument(
+        "--max-probes",
+        type=_positive_int,
+        metavar="N",
+        help="hard probe limit (overrides policy)",
+    )
+    parser.add_argument(
         "--show-filtered",
         action="store_true",
         help="include UDP open|filtered results",
@@ -133,7 +193,10 @@ def build_parser() -> argparse.ArgumentParser:
         "-y",
         "--yes",
         action="store_true",
-        help="allow scans larger than 2,000,000 probes without confirmation",
+        help=(
+            "allow scans larger than 2,000,000 probes without confirmation, "
+            "up to the policy max-probes limit"
+        ),
     )
     parser.add_argument(
         "--version",
@@ -187,6 +250,7 @@ def _render_json(results: Sequence[PortResult], finished: ScanFinished) -> str:
         "open_ports": finished.open_ports,
         "elapsed": round(finished.elapsed, 6),
         "stopped": finished.stopped,
+        "unresponsive_hosts": list(finished.unresponsive_hosts),
         "results": [_result_dict(result) for result in results],
     }
     return json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
@@ -226,6 +290,25 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(args_list)
 
+    if args.policy:
+        policy_path = Path(args.policy)
+        if not policy_path.exists():
+            _error(f"policy file not found: {policy_path}")
+            return EXIT_USAGE
+    else:
+        policy_path = None
+    try:
+        policy = load_policy(policy_path)
+        policy = policy.with_overrides(
+            allow_cidrs=args.allow_cidr,
+            deny_cidrs=args.deny_cidr,
+            max_hosts=args.max_hosts,
+            max_probes=args.max_probes,
+        )
+    except PolicyError as exc:
+        _error(f"invalid policy: {exc}")
+        return EXIT_USAGE
+
     try:
         hosts = expand_targets(" ".join(args.targets))
     except TargetError as exc:
@@ -239,6 +322,13 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_USAGE
 
     protocols = PROTOCOLS[args.protocol]
+    try:
+        policy.check_hosts(hosts)
+        policy.check_limits(len(hosts), len(ports), len(protocols))
+    except PolicyError as exc:
+        _error(str(exc))
+        return EXIT_USAGE
+
     total = len(hosts) * len(ports) * len(protocols)
     if total > 2_000_000 and not args.yes:
         _error(
@@ -254,6 +344,7 @@ def main(argv: list[str] | None = None) -> int:
             timeout=args.timeout,
             concurrency=args.concurrency,
             show_filtered=args.show_filtered,
+            max_host_failures=args.host_failures,
         )
         validate_config(config)
     except ValueError as exc:
@@ -319,6 +410,12 @@ def main(argv: list[str] | None = None) -> int:
                 f"{_plural(finished.open_ports, 'open port')}."
             )
         print(summary, file=sys.stderr)
+        if finished.unresponsive_hosts:
+            print(
+                "Unresponsive hosts skipped: "
+                + ", ".join(finished.unresponsive_hosts),
+                file=sys.stderr,
+            )
 
     if args.fail_on_open and any(result.state == "open" for result in results):
         return EXIT_FAILURE

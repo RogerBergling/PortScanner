@@ -40,21 +40,31 @@
 5. **Retain scan output outside the tool.** The application does not provide
    centralized result storage, audit trails, or retention controls yet.
 
+### Policy file
+
+The optional `policy.json` supports `allow_cidrs`, `deny_cidrs`, `max_hosts`,
+and `max_probes`. The GUI reads it from the user config directory; the CLI also
+accepts `--policy FILE` and individual overrides. For enforcement rather than a
+guardrail, deploy the file from a read-only managed location and protect it with
+OS/MDM policy.
+
 ## Security controls present
 
 - No runtime third-party Python packages.
 - No telemetry, automatic updates, or outbound calls beyond scan probes/DNS.
 - User-private, validated, atomic configuration writes.
+- Optional allow/deny CIDR policy and hard host/probe limits.
+- Per-host circuit breaker for unresponsive targets.
 - Bounded concurrency, bounded UDP receive buffer, explicit timeouts.
 - Windows and Linux CI, Ruff, pip-audit, CodeQL, Dependabot, SHA-pinned Actions.
-- Release checksums and reproducible build instructions.
+- Release checksums, bundled license/notices, and build instructions.
 
 ## Gaps to address before regulated production use
 
 | Gap | Risk | Recommended action |
 | --- | --- | --- |
 | Unsigned Windows binaries | SmartScreen warnings; tampering harder to detect | Authenticode sign both executables |
-| No built-in target allowlist | User can scan any reachable target | Add scope policy or enforce in wrapper |
+| Policy file is user-writable | A user can weaken the local policy | Deploy a read-only managed policy or enforce scope outside the app |
 | No structured audit log | Hard to prove who scanned what/when | Add JSONL audit logging for CLI and GUI |
 | No GUI automation tests | Rendering/interaction regressions | Add Xvfb-based GUI tests |
 | No SBOM/attestation | Supply-chain review friction | Generate CycloneDX/SPDX SBOM and artifact attestations |
@@ -90,7 +100,7 @@ See [SECURITY.md](../SECURITY.md) for reporting and supported versions.
 ## Roadmap for enterprise readiness
 
 1. Add code signing.
-2. Add target allowlist/deny enforcement and structured audit logging.
+2. Make target policy read-only under OS/MDM control and add structured audit logging.
 3. Add GUI integration tests and coverage thresholds.
 4. Add SBOM, artifact attestations, and hash-pinned build dependencies.
 5. Add Linux packages (.deb/RPM/AppImage) and a Windows installer/MSIX.

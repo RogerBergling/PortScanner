@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 semantic versioning.
 
+## [1.4.0] - 2026-11-03
+
+### Added
+
+- Optional target allow/deny CIDR policy with hard host and probe limits.
+- CLI policy flags and `policy.json` support for the GUI.
+- Per-host circuit breaker: after repeated timeouts, skip the rest of that
+  host's ports and continue with other hosts.
+- GUI and CLI host-failure limit controls.
+- License and third-party notices bundled in the Windows release archive.
+- Linux `make dist` release tarball containing the binary and notices.
+
+### Changed
+
+- Version and build metadata updated to 1.4.0 / 20261103.1.
+- CLI JSON output includes unresponsive hosts.
+
 ## [1.3.0] - 2026-11-01
 
 ### Added

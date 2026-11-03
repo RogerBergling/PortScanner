@@ -179,6 +179,59 @@ class CliTests(unittest.TestCase):
         self.assertEqual(stdout, "")
         self.assertIn("re-run with --yes", stderr)
 
+    def test_deny_cidr_blocks_scan(self) -> None:
+        code, stdout, stderr = run_cli(
+            [
+                "127.0.0.1",
+                "-p",
+                "1",
+                "--deny-cidr",
+                "127.0.0.0/8",
+            ]
+        )
+        self.assertEqual(code, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("denied by policy", stderr)
+
+    def test_allow_cidr_blocks_targets_outside_scope(self) -> None:
+        code, stdout, stderr = run_cli(
+            [
+                "127.0.0.1",
+                "-p",
+                "1",
+                "--allow-cidr",
+                "10.0.0.0/8",
+            ]
+        )
+        self.assertEqual(code, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("not in the allowed CIDR list", stderr)
+
+    def test_max_probes_policy_blocks_scan(self) -> None:
+        code, stdout, stderr = run_cli(
+            [
+                "127.0.0.1",
+                "-p",
+                "22,80",
+                "--max-probes",
+                "1",
+            ]
+        )
+        self.assertEqual(code, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("above policy max_probes", stderr)
+
+    def test_invalid_policy_file_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            policy = Path(directory) / "policy.json"
+            policy.write_text("{not json", encoding="utf-8")
+            code, stdout, stderr = run_cli(
+                ["127.0.0.1", "-p", "1", "--policy", str(policy)]
+            )
+        self.assertEqual(code, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("invalid policy", stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

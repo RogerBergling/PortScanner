@@ -1,9 +1,10 @@
 PYTHON ?= python3
 PREFIX ?= /usr/local
 BINARY := portscanner
+VERSION ?= $(shell PYTHONPATH=src $(PYTHON) -c "from portscanner import __version__; print(__version__)")
 SOURCES := $(shell find src -name '*.py')
 
-.PHONY: all build run test lint check install uninstall clean
+.PHONY: all build run test lint check dist install uninstall clean
 
 all: build
 
@@ -25,6 +26,10 @@ lint:
 
 check: lint test
 
+dist: $(BINARY)
+	tar -czf portscanner-$(VERSION)-linux.tar.gz \
+		$(BINARY) LICENSE THIRD-PARTY-NOTICES.md README.md
+
 install: $(BINARY)
 	install -d "$(DESTDIR)$(PREFIX)/bin"
 	install -m 755 $(BINARY) "$(DESTDIR)$(PREFIX)/bin/$(BINARY)"
@@ -33,7 +38,7 @@ uninstall:
 	rm -f "$(DESTDIR)$(PREFIX)/bin/$(BINARY)"
 
 clean:
-	rm -f $(BINARY)
+	rm -f $(BINARY) portscanner-*-linux.tar.gz
 	rm -rf build dist
 	find . -name __pycache__ -type d -prune -exec rm -rf {} +
 	find . -name '*.spec' -type f -delete

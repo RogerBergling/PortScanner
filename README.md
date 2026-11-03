@@ -3,10 +3,10 @@
 Fast TCP/UDP port scanner for Linux and Windows 11 with a graphical interface.
 No root privileges and no third-party runtime packages.
 
-**Version 1.3.0** · Build 20261101.1 · 2026-11-01 11:14 UTC
+**Version 1.4.0** · Build 20261103.1 · 2026-11-03 16:56 UTC
 
 ![status](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%2011-blue)
-![version](https://img.shields.io/badge/version-1.3.0-blue)
+![version](https://img.shields.io/badge/version-1.4.0-blue)
 
 [Quick start](#the-easy-way-to-get-started) ·
 [Screenshots](#screenshots) ·
@@ -25,7 +25,8 @@ No root privileges and no third-party runtime packages.
    `22,80,443`, and press **Start scan**.
 
 Windows SmartScreen may warn because the executable is unsigned. If you want
-to verify it first, compare its hash with `SHA256SUMS`.
+to verify it first, compare its hash with `SHA256SUMS`. Release builds also
+include `LICENSE` and `THIRD-PARTY-NOTICES.md` in the Windows bundle.
 
 ### Linux
 
@@ -100,6 +101,8 @@ sudo pacman -S tk
 - Live progress, scan rate, open-port counter and sortable result table
 - Copy selected `host:port/protocol` entries with `Ctrl+C`, export to CSV
 - Headless `scan` mode with text, CSV, or JSON output and automation exit codes
+- Optional allow/deny CIDR policy with hard host and probe limits
+- Automatically skips a host after repeated timeouts and continues with other hosts
 - Settings are remembered between runs
 - Version, build number, and build date/time shown in the GUI and CLI
 
@@ -160,15 +163,49 @@ Common options:
 - `--protocol tcp|udp|both`
 - `--timeout SECONDS`
 - `--concurrency N` (1-5000)
+- `--host-failures N` — skip a host after N consecutive timeouts; `0` disables
+- `--policy FILE` — JSON allow/deny policy and hard limits
+- `--allow-cidr CIDR` / `--deny-cidr CIDR` — repeatable scope overrides
+- `--max-hosts N` / `--max-probes N` — hard policy overrides
 - `--show-filtered` — include UDP `open|filtered`
 - `--format text|csv|json`
 - `-o/--output FILE`
 - `--fail-on-open` — exit with status 1 when an open port is found
 - `--quiet`
-- `--yes` — allow scans over 2,000,000 probes
+- `--yes` — allow scans over 2,000,000 probes, up to the policy limit
 
 Exit codes: `0` success, `1` findings or scan failure, `2` usage/validation
 error, `130` interrupted. Run `portscanner scan --help` for the full reference.
+
+### Target policy and hard limits
+
+By default, PortScanner is open to everyone and scans any target the user
+enters. An optional policy can restrict scope and cap scan size:
+
+```json
+{
+  "allow_cidrs": ["10.0.0.0/8", "192.168.0.0/16"],
+  "deny_cidrs": ["10.10.0.0/16"],
+  "max_hosts": 4096,
+  "max_probes": 5000000
+}
+```
+
+- `allow_cidrs` empty means “all targets”; if set, every resolved target must
+  be inside the list.
+- `deny_cidrs` always takes precedence.
+- Default hard limits: 65,536 hosts and 10,000,000 probes.
+- The GUI reads `policy.json` from the user config directory
+  (`~/.config/portscanner/policy.json` on Linux,
+  `%APPDATA%\portscanner\policy.json` on Windows). Enterprise deployments
+  should place it in a read-only location managed by the OS/MDM, because a
+  user-writable policy is a guardrail, not an enforcement boundary.
+- The CLI accepts `--policy FILE`, plus `--allow-cidr`, `--deny-cidr`,
+  `--max-hosts`, and `--max-probes` overrides.
+
+A host that stops responding is skipped after 20 consecutive timeouts by
+default, and the scan continues with other hosts. Change this in the GUI’s
+**Host fail limit** field or with CLI `--host-failures`; `0` disables it.
 
 ## Troubleshooting
 
@@ -195,6 +232,7 @@ Requirements: Python 3.11+ with Tkinter.
 
 ```bash
 make build       # creates ./portscanner
+make dist        # Linux release tarball with license and notices
 ./portscanner
 ```
 
@@ -284,6 +322,7 @@ src/portscanner/
   cli.py       headless scan command and output formats
   config.py    validated, atomic application settings
   engine.py    asyncio TCP/UDP scan engine
+  policy.py    target allow/deny policy and hard scan limits
   ports.py     port parsing and presets
   targets.py   target expansion (IP, CIDR, ranges, DNS)
 packaging/

@@ -72,6 +72,17 @@ def _concurrency_text(value: Any) -> str:
     return str(count)
 
 
+def _host_failures_text(value: Any) -> str:
+    text = _text(value, "20").strip()
+    try:
+        count = int(text)
+    except ValueError:
+        return "20"
+    if not 0 <= count <= 1000:
+        return "20"
+    return str(count)
+
+
 @dataclass(slots=True)
 class AppConfig:
     """Serializable GUI settings with defensive defaults."""
@@ -83,6 +94,7 @@ class AppConfig:
     protocol: str = "TCP"
     timeout: str = "1.0"
     concurrency: str = "1000"
+    host_failures: str = "20"
     show_filtered: bool = False
     version: int = CONFIG_VERSION
 
@@ -113,6 +125,7 @@ class AppConfig:
             protocol=protocol,
             timeout=_timeout_text(data.get("timeout", "1.0")),
             concurrency=_concurrency_text(data.get("concurrency", "1000")),
+            host_failures=_host_failures_text(data.get("host_failures", "20")),
             show_filtered=data.get("show_filtered") is True,
             version=version,
         )

@@ -67,6 +67,7 @@ class AppConfigTests(unittest.TestCase):
         self.assertEqual(config.protocol, "TCP")
         self.assertEqual(config.timeout, "1.0")
         self.assertEqual(config.concurrency, "1000")
+        self.assertEqual(config.host_failures, "20")
         self.assertFalse(config.all_ports)
         self.assertFalse(config.show_filtered)
         self.assertEqual(config.version, CONFIG_VERSION)
@@ -81,6 +82,7 @@ class AppConfigTests(unittest.TestCase):
                 "protocol": "ICMP",
                 "timeout": "nope",
                 "concurrency": "99999",
+                "host_failures": "2000",
                 "show_filtered": 1,
                 "version": 999,
             }
@@ -92,6 +94,7 @@ class AppConfigTests(unittest.TestCase):
         self.assertEqual(config.protocol, "TCP")
         self.assertEqual(config.timeout, "1.0")
         self.assertEqual(config.concurrency, "1000")
+        self.assertEqual(config.host_failures, "20")
         self.assertFalse(config.show_filtered)
         self.assertEqual(config.version, CONFIG_VERSION)
 
@@ -105,6 +108,7 @@ class AppConfigTests(unittest.TestCase):
                 "protocol": "TCP + UDP",
                 "timeout": "2,5",
                 "concurrency": "2500",
+                "host_failures": "50",
                 "show_filtered": True,
                 "version": 1,
             }
@@ -114,6 +118,7 @@ class AppConfigTests(unittest.TestCase):
         self.assertEqual(config.protocol, "TCP + UDP")
         self.assertEqual(config.timeout, "2,5")
         self.assertEqual(config.concurrency, "2500")
+        self.assertEqual(config.host_failures, "50")
         self.assertTrue(config.show_filtered)
 
 

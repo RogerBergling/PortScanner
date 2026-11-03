@@ -7,6 +7,7 @@ import unittest
 from unittest import mock
 
 from portscanner.engine import (
+    HostUnresponsive,
     PortResult,
     ScanConfig,
     ScanEngine,
@@ -71,6 +72,9 @@ class ScanConfigValidationTests(unittest.TestCase):
             {"concurrency": 0},
             {"concurrency": "many"},
             {"concurrency": float("inf")},
+            {"max_host_failures": -1},
+            {"max_host_failures": 1001},
+            {"max_host_failures": True},
         ]
         for overrides in invalid:
             values: dict[str, object] = {"hosts": ["127.0.0.1"], "ports": [80]}
@@ -211,6 +215,33 @@ class EngineTests(unittest.TestCase):
         assert finished is not None
         self.assertTrue(finished.stopped)
         self.assertFalse(engine.is_running())
+
+    def test_unresponsive_host_is_skipped_and_scan_continues(self) -> None:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
+            server.bind(("127.0.0.1", 0))
+            server.listen(1)
+            open_port = server.getsockname()[1]
+
+            events = run_scan(
+                ScanConfig(
+                    hosts=["192.0.2.1", "127.0.0.1"],
+                    ports=[open_port, 65000, 65001, 65002],
+                    protocols=("tcp",),
+                    timeout=0.2,
+                    concurrency=4,
+                    max_host_failures=3,
+                )
+            )
+
+        results = [event for event in events if isinstance(event, PortResult)]
+        finished = events[-1]
+        assert isinstance(finished, ScanFinished)
+        self.assertEqual([result.port for result in results], [open_port])
+        self.assertEqual(finished.unresponsive_hosts, ("192.0.2.1",))
+        self.assertEqual(finished.scanned, finished.total)
+        self.assertTrue(
+            any(isinstance(event, HostUnresponsive) for event in events)
+        )
 
 
 if __name__ == "__main__":

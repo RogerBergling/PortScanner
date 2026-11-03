@@ -70,6 +70,7 @@ class ScanConfig:
     timeout: float = 1.0
     concurrency: int = 1000
     show_filtered: bool = False
+    max_host_failures: int = 20
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,6 +80,12 @@ class PortResult:
     protocol: str
     state: str
     service: str
+
+
+@dataclass(frozen=True, slots=True)
+class HostUnresponsive:
+    host: str
+    consecutive_failures: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,6 +106,7 @@ class ScanFinished:
     elapsed: float
     stopped: bool
     error: str | None = None
+    unresponsive_hosts: tuple[str, ...] = ()
 
 
 def validate_config(config: ScanConfig) -> None:
@@ -149,6 +157,13 @@ def validate_config(config: ScanConfig) -> None:
     if concurrency < 1:
         raise ValueError("Concurrency must be a positive integer.")
 
+    if (
+        isinstance(config.max_host_failures, bool)
+        or not isinstance(config.max_host_failures, int)
+        or not 0 <= config.max_host_failures <= 1000
+    ):
+        raise ValueError("Host failure limit must be between 0 and 1000.")
+
 
 @lru_cache(maxsize=4096)
 def _service_name(port: int, protocol: str) -> str:
@@ -180,6 +195,8 @@ class ScanEngine:
         self._open = 0
         self._current = ""
         self._started_at = 0.0
+        self._host_failures: dict[str, int] = {}
+        self._unresponsive_hosts: set[str] = set()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
@@ -254,6 +271,7 @@ class ScanEngine:
                     elapsed=elapsed,
                     stopped=self._stop.is_set(),
                     error=error,
+                    unresponsive_hosts=tuple(sorted(self._unresponsive_hosts)),
                 )
             )
             self._loop = None
@@ -333,6 +351,10 @@ class ScanEngine:
                 continue
 
             host, port, protocol = item
+            if host in self._unresponsive_hosts:
+                self._scanned += 1
+                continue
+
             self._current = f"{host}:{port} ({protocol.upper()})"
             try:
                 if protocol == "tcp":
@@ -345,6 +367,7 @@ class ScanEngine:
                 state = None
 
             self._scanned += 1
+            self._record_host_state(host, state)
             if state is None:
                 continue
             if state == "open" or (
@@ -361,6 +384,21 @@ class ScanEngine:
                         service=_service_name(port, protocol),
                     )
                 )
+
+    def _record_host_state(self, host: str, state: str | None) -> None:
+        limit = self.config.max_host_failures
+        if limit <= 0:
+            return
+        if state in ("open", "closed"):
+            self._host_failures[host] = 0
+            return
+        if state not in ("filtered", "unreachable", "open|filtered", None):
+            return
+        failures = self._host_failures.get(host, 0) + 1
+        self._host_failures[host] = failures
+        if failures >= limit and host not in self._unresponsive_hosts:
+            self._unresponsive_hosts.add(host)
+            self._emit(HostUnresponsive(host, failures))
 
     async def _scan_tcp(
         self, loop: asyncio.AbstractEventLoop, host: str, port: int

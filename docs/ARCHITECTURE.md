@@ -14,6 +14,7 @@ build_info.py Release version, build number, and build timestamp
 cli.py        Headless argument parsing, scan orchestration, text/CSV/JSON
 config.py     Versioned settings, validation, atomic persistence
 engine.py     asyncio TCP/UDP probes and scan lifecycle events
+policy.py     Target allow/deny CIDRs and hard scan limits
 ports.py      Port specification parsing and presets
 targets.py    Address, CIDR, range, and DNS target expansion
 ```
@@ -22,12 +23,15 @@ targets.py    Address, CIDR, range, and DNS target expansion
 
 1. The GUI or CLI parses targets and ports.
 2. `targets.expand_targets()` resolves and de-duplicates hosts.
-3. `ScanConfig` is validated by `engine.validate_config()`.
-4. `ScanEngine` starts a daemon thread with its own asyncio event loop.
-5. A producer places `(host, port, protocol)` probes on a bounded queue.
-6. Worker coroutines perform TCP connect or connected UDP probes.
-7. Results and progress are emitted through a thread-safe callback.
-8. The GUI polls a `queue.Queue`; the CLI blocks on the same event stream.
+3. `policy.ScanPolicy` checks resolved targets and hard scan limits.
+4. `ScanConfig` is validated by `engine.validate_config()`.
+5. `ScanEngine` starts a daemon thread with its own asyncio event loop.
+6. A producer places `(host, port, protocol)` probes on a bounded queue.
+7. Worker coroutines perform TCP connect or connected UDP probes.
+8. Repeated host timeouts trip a per-host circuit breaker; remaining probes for
+   that host are skipped while other hosts continue.
+9. Results and progress are emitted through a thread-safe callback.
+10. The GUI polls a `queue.Queue`; the CLI blocks on the same event stream.
 
 The bounded queue and worker count limit memory and socket usage. TCP probes use
 non-blocking sockets, an `asyncio.timeout`, and `SO_LINGER` with a zero timeout
@@ -44,6 +48,8 @@ back to safe defaults. Writes use a temporary file in the destination directory,
 
 - **User input:** targets, ports, timeout, concurrency, and config values are
   validated before use.
+- **Target scope:** optional allow/deny CIDRs and hard host/probe limits are
+  enforced after DNS resolution and before the engine starts.
 - **DNS:** hostnames are resolved through the operating system resolver. DNS is
   currently synchronous in the GUI path and can block the interface.
 - **Remote hosts:** probe responses and UDP payloads are treated as untrusted.
@@ -57,6 +63,8 @@ back to safe defaults. Writes use a temporary file in the destination directory,
 
 - Individual probe failures are treated as closed, filtered, or unknown
   depending on the exception.
+- After `max_host_failures` consecutive no-response probes, a host is marked
+  unresponsive and its remaining probes are skipped.
 - A scan-level exception is reported through `ScanFinished.error`.
 - Stopping a scan cancels the producer and workers, then emits a completion
   event with `stopped=True`.

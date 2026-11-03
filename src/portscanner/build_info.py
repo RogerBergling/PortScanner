@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-BUILD_NUMBER = "20261101.1"
-BUILD_TIMESTAMP = "2026-11-01 11:14 UTC"
+BUILD_NUMBER = "20261103.1"
+BUILD_TIMESTAMP = "2026-11-03 16:56 UTC"
 
 
 def build_label() -> str:

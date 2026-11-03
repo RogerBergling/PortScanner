@@ -27,7 +27,15 @@ from .config import (
     load_config,
     save_config,
 )
-from .engine import PortResult, ScanConfig, ScanEngine, ScanFinished, ScanProgress
+from .engine import (
+    HostUnresponsive,
+    PortResult,
+    ScanConfig,
+    ScanEngine,
+    ScanFinished,
+    ScanProgress,
+)
+from .policy import PolicyError, ScanPolicy, load_policy
 from .ports import PRESETS, PortError, parse_ports
 from .targets import MAX_HOSTS, TargetError, estimate_targets, expand_targets
 
@@ -46,6 +54,7 @@ BORDER = "#2a3040"
 
 CONFIG_DIR = config_directory()
 CONFIG_FILE = CONFIG_DIR / "config.json"
+POLICY_FILE = CONFIG_DIR / "policy.json"
 
 USAGE = """portscanner - fast TCP/UDP port scanner
 
@@ -83,6 +92,13 @@ class PortScannerApp:
         self._sort_reverse = False
         self._searching = False
         self._stopping = False
+
+        self.policy = ScanPolicy()
+        self.policy_error: str | None = None
+        try:
+            self.policy = load_policy(POLICY_FILE)
+        except PolicyError as exc:
+            self.policy_error = str(exc)
 
         self._build_styles()
         self._build_ui()
@@ -346,6 +362,20 @@ class PortScannerApp:
         )
         self.concurrency_spin.pack(side="left", padx=(6, 18))
 
+        ttk.Label(options, text="Host fail limit", style="Panel.TLabel").pack(
+            side="left"
+        )
+        self.host_failures_var = tk.StringVar(value="20")
+        self.host_failures_spin = ttk.Spinbox(
+            options,
+            from_=0,
+            to=1000,
+            increment=5,
+            textvariable=self.host_failures_var,
+            width=5,
+        )
+        self.host_failures_spin.pack(side="left", padx=(6, 18))
+
         self.filtered_var = tk.BooleanVar(value=False)
         self.filtered_check = ttk.Checkbutton(
             options,
@@ -464,6 +494,7 @@ class PortScannerApp:
             (self.protocol_combo, "readonly"),
             (self.timeout_spin, "normal"),
             (self.concurrency_spin, "normal"),
+            (self.host_failures_spin, "normal"),
             (self.filtered_check, "normal"),
         ]
 
@@ -555,9 +586,16 @@ class PortScannerApp:
             port_count = 0
         protocol_count = len(self._protocols())
         probes = hosts * port_count * protocol_count
+        host_limit = min(MAX_HOSTS, self.policy.max_hosts)
+        probe_limit = self.policy.max_probes
 
-        if hosts > MAX_HOSTS:
-            text = f"{hosts:,} hosts — above the {MAX_HOSTS:,} host limit"
+        if hosts > host_limit:
+            text = f"{hosts:,} hosts — above the {host_limit:,} host limit"
+            color = RED
+        elif probes > probe_limit:
+            text = (
+                f"{probes:,} probes — above the {probe_limit:,} policy limit"
+            )
             color = RED
         elif probes > 2_000_000:
             text = f"{hosts:,} hosts × {port_count:,} ports × {protocol_count} = {probes:,} probes (large scan)"
@@ -630,7 +668,40 @@ class PortScannerApp:
             )
             return
 
+        try:
+            host_failures = int(self.host_failures_var.get())
+        except ValueError:
+            messagebox.showerror(
+                "Invalid host failure limit",
+                "Host failure limit must be a whole number between 0 and 1000.",
+                parent=self.root,
+            )
+            return
+        if not 0 <= host_failures <= 1000:
+            messagebox.showerror(
+                "Invalid host failure limit",
+                "Host failure limit must be between 0 and 1000.",
+                parent=self.root,
+            )
+            return
+
         protocols = self._protocols()
+        if self.policy_error is not None:
+            messagebox.showerror(
+                "Policy error",
+                f"The policy file could not be loaded:\n{self.policy_error}",
+                parent=self.root,
+            )
+            return
+        try:
+            self.policy.check_hosts(hosts)
+            self.policy.check_limits(len(hosts), len(ports), len(protocols))
+        except PolicyError as exc:
+            messagebox.showerror(
+                "Scan blocked by policy", str(exc), parent=self.root
+            )
+            return
+
         total = len(hosts) * len(ports) * len(protocols)
         if total > 2_000_000:
             proceed = messagebox.askyesno(
@@ -652,6 +723,7 @@ class PortScannerApp:
             timeout=timeout,
             concurrency=concurrency,
             show_filtered=self.filtered_var.get(),
+            max_host_failures=host_failures,
         )
         self.events = queue.Queue()
         self.engine = ScanEngine(config, self.events.put)
@@ -689,6 +761,8 @@ class PortScannerApp:
                 self._add_result(event)
             elif isinstance(event, ScanProgress):
                 self._show_progress(event)
+            elif isinstance(event, HostUnresponsive):
+                self._show_host_unresponsive(event)
             elif isinstance(event, ScanFinished):
                 finished = event
                 break
@@ -710,6 +784,13 @@ class PortScannerApp:
             f"{event.scanned:,} / {event.total:,} probes · "
             f"{event.rate:,.0f}/s · {event.open_ports:,} open"
         )
+
+    def _show_host_unresponsive(self, event: HostUnresponsive) -> None:
+        if not self._stopping:
+            self.status_var.set(
+                f"Host {event.host} stopped responding after "
+                f"{event.consecutive_failures} probes; skipping its remaining ports."
+            )
 
     def _finish_scan(self, event: ScanFinished) -> None:
         self._stopping = False
@@ -747,6 +828,11 @@ class PortScannerApp:
             if event.elapsed > 0
             else f"{event.open_ports:,} open"
         )
+        if event.unresponsive_hosts:
+            self.status_var.set(
+                f"{self.status_var.get()} "
+                f"{len(event.unresponsive_hosts)} host(s) skipped as unresponsive."
+            )
 
     def _set_scanning(self, scanning: bool) -> None:
         self.start_button.configure(state="disabled" if scanning else "normal")
@@ -899,6 +985,7 @@ class PortScannerApp:
         self.protocol_var.set(config.protocol)
         self.timeout_var.set(config.timeout)
         self.concurrency_var.set(config.concurrency)
+        self.host_failures_var.set(config.host_failures)
         self.filtered_var.set(config.show_filtered)
 
         self.all_ports_var.set(config.all_ports)
@@ -923,6 +1010,7 @@ class PortScannerApp:
             protocol=self.protocol_var.get(),
             timeout=self.timeout_var.get(),
             concurrency=self.concurrency_var.get(),
+            host_failures=self.host_failures_var.get(),
             show_filtered=self.filtered_var.get(),
         )
         try:

@@ -8,6 +8,9 @@ on:
       - windows-build
     paths:
       - ".github/workflows/windows-build.yml"
+      - "LICENSE"
+      - "README.md"
+      - "THIRD-PARTY-NOTICES.md"
       - "packaging/**"
       - "requirements-build.txt"
       - "requirements-dev.txt"
@@ -106,6 +109,17 @@ jobs:
           $lines | Set-Content dist/SHA256SUMS
           Get-Content dist/SHA256SUMS
 
+          Copy-Item LICENSE, THIRD-PARTY-NOTICES.md, README.md -Destination dist
+          Compress-Archive -Path @(
+            "dist/PortScanner.exe",
+            "dist/PortScannerCLI.exe",
+            "dist/LICENSE",
+            "dist/THIRD-PARTY-NOTICES.md",
+            "dist/README.md",
+            "dist/SHA256SUMS"
+          ) -DestinationPath "dist/PortScanner-windows-x64.zip" -Force
+          Get-Item dist/PortScanner-windows-x64.zip | Format-List Name, Length
+
       - name: Smoke test executables
         shell: pwsh
         run: |
@@ -124,6 +138,7 @@ jobs:
           path: |
             dist/PortScanner.exe
             dist/PortScannerCLI.exe
+            dist/PortScanner-windows-x64.zip
             dist/SHA256SUMS
           if-no-files-found: error
           retention-days: 14
