@@ -1,0 +1,9 @@
+title = "PortScanner Gitleaks configuration"
+
+[allowlist]
+description = "Compiled release binaries are scanned from source instead"
+paths = [
+  '''(^|/)PortScanner\.exe$''',
+  '''(^|/)PortScannerCLI\.exe$''',
+  '''(^|/)portscanner$''',
+]
