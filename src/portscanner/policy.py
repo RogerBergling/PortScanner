@@ -111,14 +111,21 @@ class ScanPolicy:
 
     def check_hosts(self, hosts: Sequence[str]) -> None:
         for host in hosts:
-            address = ipaddress.ip_address(host.partition("%")[0])
+            parsed = ipaddress.ip_address(host.partition("%")[0])
+            # A target written as ::ffff:10.1.2.3 is an IPv6 address but
+            # connects to the IPv4 host. Check both forms against the policy.
+            addresses = [parsed]
+            if isinstance(parsed, ipaddress.IPv6Address) and parsed.ipv4_mapped:
+                addresses.append(parsed.ipv4_mapped)
             if any(
                 address.version == network.version and address in network
+                for address in addresses
                 for network in self.deny_cidrs
             ):
                 raise PolicyError(f"Target {host} is denied by policy.")
             if self.allow_cidrs and not any(
                 address.version == network.version and address in network
+                for address in addresses
                 for network in self.allow_cidrs
             ):
                 raise PolicyError(f"Target {host} is not in the allowed CIDR list.")

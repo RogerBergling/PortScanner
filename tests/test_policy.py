@@ -42,6 +42,16 @@ class ScanPolicyTests(unittest.TestCase):
         policy = ScanPolicy.from_mapping({"allow_cidrs": ["fe80::/10"]})
         policy.check_hosts(["fe80::1%eth0"])
 
+    def test_ipv4_mapped_ipv6_targets_use_ipv4_policy(self) -> None:
+        denied = ScanPolicy.from_mapping({"deny_cidrs": ["10.0.0.0/8"]})
+        with self.assertRaises(PolicyError):
+            denied.check_hosts(["::ffff:10.1.2.3"])
+
+        allowed = ScanPolicy.from_mapping({"allow_cidrs": ["10.0.0.0/8"]})
+        allowed.check_hosts(["::ffff:10.1.2.3"])
+        with self.assertRaises(PolicyError):
+            allowed.check_hosts(["::ffff:192.0.2.1"])
+
     def test_limits_are_enforced(self) -> None:
         policy = ScanPolicy(max_hosts=2, max_probes=10)
         with self.assertRaises(PolicyError):
